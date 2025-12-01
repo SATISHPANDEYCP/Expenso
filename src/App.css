@@ -1,0 +1,432 @@
+/* ---------- GLOBAL ---------- */
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+
+  background:
+    radial-gradient(circle at 40% 45%,
+      rgba(139, 92, 246, 0.18),
+      rgba(2, 6, 23, 1) 42%),
+    radial-gradient(circle at 70% 30%,
+      rgba(45, 212, 191, 0.10),
+      transparent 55%),
+    #020617;
+
+  color: #e5e7eb;
+}
+
+/* ---------- APP LAYOUT ---------- */
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+
+.app-header {
+  padding: 18px 20px 14px;
+  text-align: center;
+  background: linear-gradient(to right, #020617, #020617);
+  border-bottom: 1px solid #1f2937;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(10px);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  letter-spacing: 0.03em;
+}
+
+.app-header p {
+  margin: 4px 0 0;
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* Main – centered container with grid */
+
+.app-main {
+  width: 100%;
+  max-width: 1100px;
+  margin: 16px auto 24px;
+  padding: 0 16px 40px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr; /* mobile default */
+}
+
+/* ---------- CARDS ---------- */
+
+.card {
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 18px;
+  padding: 16px 14px;
+  border: 1px solid #1f2937;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.55);
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out,
+    border-color 0.15s ease-out, background 0.15s ease-out;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.7);
+  border-color: #374151;
+  background: rgba(15, 23, 42, 0.96);
+}
+
+.card h2 {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+}
+
+/* row header (title + button) */
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- STATS GRID ---------- */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.stat {
+  background: radial-gradient(circle at top left, #111827, #020617);
+  border-radius: 12px;
+  padding: 8px 10px;
+  border: 1px solid #111827;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.stat-value {
+  font-size: 1.02rem;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+/* Warning message */
+
+.warning {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(248, 113, 113, 0.18);
+  border: 1px solid #f87171;
+  font-size: 0.85rem;
+}
+
+/* ---------- FORMS ---------- */
+
+.inline-form,
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+}
+
+input,
+select {
+  padding: 7px 9px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  background: #020617;
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+input:focus,
+select:focus {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.6);
+  background: #020617;
+}
+
+input::placeholder {
+  color: #6b7280;
+}
+
+/* ---------- BUTTONS ---------- */
+
+button {
+  border: none;
+  margin-top: 2px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: white;
+  font-weight: 500;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease,
+    filter 0.12s ease, background 0.18s ease;
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.35);
+}
+
+button:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(79, 70, 229, 0.55);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
+}
+
+/* disabled state */
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+button:disabled:hover {
+  box-shadow: none;
+  transform: none;
+  filter: none;
+}
+
+/* main big buttons — same size */
+.btn-main {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+}
+
+/* “Show full details” & Cancel secondary button */
+
+.btn-secondary {
+  margin-top: 0;
+  padding: 6px 14px;
+  background: rgba(37, 99, 235, 0.15);
+  border-radius: 999px;
+  border: 1px solid rgba(129, 140, 248, 0.8);
+  color: #c7d2fe;
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  background: rgba(37, 99, 235, 0.25);
+  filter: none;
+}
+
+/* income buttons row (Save + Cancel) */
+.income-actions-row {
+  display: flex;
+  flex-direction: column;   /* 2 ek sath nahi, ek ke niche ek */
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ---------- BACKUP SECTION ---------- */
+
+.backup-row {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;   /* download + restore vertical */
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.backup-restore-label {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.backup-restore-label input[type="file"] {
+  width: 100%;
+  max-width: 340px;
+  padding: 6px;
+  border-radius: 10px;
+  border: 1px dashed #374151;
+  background: #020617;
+  color: #9ca3af;
+  cursor: pointer;
+}
+
+/* bill button extra spacing */
+.bill-btn {
+  margin-top: 10px;
+}
+
+/* ---------- EXPENSE LIST ---------- */
+
+.month-selector {
+  margin-bottom: 10px;
+}
+
+.expense-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0 0;
+  max-height: 160px; /* ~ 3 items visible */
+  overflow-y: auto; /* scroll when more items */
+}
+
+/* 👇 Thin scrollbar: single line feel only for list */
+.expense-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.expense-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.expense-list::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 999px;
+}
+
+.expense-list::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Firefox */
+.expense-list {
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 transparent;
+}
+
+.expense-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: #020617;
+  border: 1px solid #111827;
+  margin-bottom: 6px;
+  transition: border-color 0.12s ease, background 0.12s ease,
+    transform 0.12s ease;
+}
+
+.expense-item:hover {
+  border-color: #374151;
+  background: #050816;
+  transform: translateY(-1px);
+}
+
+.expense-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* new meta line: category + date */
+.expense-meta {
+  margin-top: 2px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.expense-category {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #111827;
+  font-size: 0.7rem;
+}
+
+.expense-date {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.expense-amount {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Empty state */
+
+.empty {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+/* ---------- FOOTER ---------- */
+
+.app-footer {
+  text-align: center;
+  padding: 8px 0 14px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  border-top: 1px solid rgba(31, 41, 55, 0.5);
+}
+
+/* ---------- RESPONSIVE BREAKPOINTS ---------- */
+
+/* Mobile tweaks */
+@media (max-width: 600px) {
+  .app-main {
+    padding: 0 12px 32px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Laptop / bigger screens – 2-column dashboard */
+@media (min-width: 900px) {
+  .app-main {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 24px;
+  }
+
+  /* First two cards side-by-side */
+  .app-main > section:nth-child(1),
+  .app-main > section:nth-child(2) {
+    grid-column: span 1;
+  }
+
+  /* Remaining cards full width (2 columns span) */
+  .app-main > section:nth-child(n + 3) {
+    grid-column: span 2;
+  }
+}
