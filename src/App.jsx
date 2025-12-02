@@ -1,7 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import "./App.css";
 
 const STORAGE_KEY = "personal-expense-app";
+const CATEGORY_OPTIONS = [
+  "All",
+  "Food",
+  "Transport",
+  "Shopping",
+  "Bills",
+  "Entertainment",
+  "Other",
+];
+
+// ---------- HELPER FUNCTIONS ----------
 
 function getMonthKey(dateStr) {
   const d = new Date(dateStr);
@@ -26,6 +37,82 @@ function getTodayDateStr() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+// ---------- CUSTOM MULTI-SELECT DROPDOWN ----------
+
+function MultiCategorySelect({ options, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  // dropdown ke bahar click → close
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const isAll = value.includes("All") || value.length === 0;
+
+  const displayText = isAll
+    ? "All categories"
+    : value.length === 1
+      ? value[0]
+      : `${value.length} categories selected`;
+
+  const toggleOption = (opt) => {
+    let next = value;
+
+    if (opt === "All") {
+      next = ["All"];
+    } else {
+      const has = value.includes(opt);
+      if (has) {
+        next = value.filter((v) => v !== opt);
+      } else {
+        next = value.filter((v) => v !== "All").concat(opt);
+      }
+      if (next.length === 0) next = ["All"];
+    }
+
+    onChange(next);
+  };
+
+  return (
+    <div className="multi-select" ref={ref}>
+      <div
+        className="multi-select-trigger"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="multi-select-value">{displayText}</span>
+        <span className="multi-select-arrow">▾</span>
+      </div>
+
+      {open && (
+        <div className="multi-select-dropdown">
+          {options.map((opt) => {
+            const checked = isAll ? opt === "All" : value.includes(opt);
+            return (
+              <label key={opt} className="multi-select-option">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggleOption(opt)}
+                />
+                <span>{opt === "All" ? "All categories" : opt}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- MAIN APP ----------
 
 export default function App() {
   // ---- Data state (loaded directly from localStorage) ----
@@ -61,6 +148,9 @@ export default function App() {
   const [selectedMonthKey, setSelectedMonthKey] = useState(
     getMonthKey(getTodayDateStr())
   );
+
+  // Category filter as MULTI-SELECT (default: ["All"])
+  const [categoryFilter, setCategoryFilter] = useState(["All"]);
 
   // income edit / view toggle
   const [isEditingIncome, setIsEditingIncome] = useState(false);
@@ -114,8 +204,7 @@ export default function App() {
 
   // Weekly limit = monthly income / 4 (simple)
   const weeklyLimit = currentMonthIncome / 4;
-  const showWarning =
-    weeklyLimit > 0 && weeklyTotal > weeklyLimit * 0.8; // 80% se upar warning
+  const showWarning = weeklyLimit > 0 && weeklyTotal > weeklyLimit * 0.8;
 
   // ---- Handlers ----
   const handleIncomeSave = (e) => {
@@ -182,24 +271,76 @@ export default function App() {
 
   const selectedMonthIncome = data.incomes[selectedMonthKey] || 0;
 
+  // Category filtered expenses for Month Details (multi-select)
+  const filteredMonthExpenses = useMemo(() => {
+    if (categoryFilter.includes("All") || categoryFilter.length === 0) {
+      return selectedMonthExpenses;
+    }
+    return selectedMonthExpenses.filter((e) =>
+      categoryFilter.includes(e.category || "Other")
+    );
+  }, [selectedMonthExpenses, categoryFilter]);
+
+  const filteredMonthTotal = useMemo(
+    () => filteredMonthExpenses.reduce((s, e) => s + e.amount, 0),
+    [filteredMonthExpenses]
+  );
+
   const hasData =
     data.expenses.length > 0 || Object.keys(data.incomes).length > 0;
 
   // ---------- BACKUP / RESTORE HANDLERS ----------
 
+  // const handleBackupDownload = () => {
+  //   if (!hasData) return;
+  //   const json = JSON.stringify(data, null, 2);
+  //   const blob = new Blob([json], { type: "application/json" });
+  //   const url = URL.createObjectURL(blob);
+
+  //   const a = document.createElement("a");
+  //   a.href = url;
+  //   a.download = "expense-backup.json";
+  //   a.click();
+
+  //   URL.revokeObjectURL(url);
+  // };
+
+
+
+
+
   const handleBackupDownload = () => {
     if (!hasData) return;
+
     const json = JSON.stringify(data, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
+    // 👉 current date-time se file name banana
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    const d = String(now.getDate()).padStart(2, "0");
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+
+    // Windows me ":" allowed nahi hota, isliye "-" use kiya
+    const fileName = `expenso-backup_${y}-${m}-${d}_${hh}-${mm}-${ss}.json`;
+
     const a = document.createElement("a");
     a.href = url;
-    a.download = "expense-backup.json";
+    a.download = fileName;   // 👈 yahan new naam
     a.click();
 
     URL.revokeObjectURL(url);
   };
+
+
+
+
+
+
 
   const handleBackupRestore = (event) => {
     const file = event.target.files?.[0];
@@ -216,15 +357,12 @@ export default function App() {
           Array.isArray(parsed.expenses) &&
           typeof parsed.incomes === "object"
         ) {
-          // 🔁 MERGE: backup + current data (current data ko priority)
           setData((prev) => {
-            // incomes: current ko priority
             const mergedIncomes = {
               ...parsed.incomes,
               ...prev.incomes,
             };
 
-            // expenses: id ke basis pe unique merge
             const existingIds = new Set(prev.expenses.map((e) => e.id));
             const mergedExpenses = [...prev.expenses];
 
@@ -234,7 +372,6 @@ export default function App() {
               }
             });
 
-            // optional: date desc (latest upar)
             mergedExpenses.sort(
               (a, b) => new Date(b.date) - new Date(a.date)
             );
@@ -257,93 +394,197 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  // ---------- DOWNLOAD BILL (for selected month) ----------
+  // ---------- DOWNLOAD BILL (for selected month + selected categories) ----------
   const handleDownloadBill = () => {
-    const expenses = selectedMonthExpenses;
-    const income = selectedMonthIncome;
-    const total = selectedMonthTotal;
-    const balance = income - total;
+    const isAll =
+      categoryFilter.includes("All") || categoryFilter.length === 0;
 
-    const win = window.open("", "_blank", "width=800,height=600");
+    const expenses = isAll ? selectedMonthExpenses : filteredMonthExpenses;
+    const income = selectedMonthIncome;
+
+    // 1️⃣ Selected categories ka total
+    const total = expenses.reduce((s, e) => s + e.amount, 0);
+
+    // 2️⃣ Poore month ka total (ALL categories)
+    const fullMonthTotal = selectedMonthExpenses.reduce(
+      (s, e) => s + e.amount,
+      0
+    );
+
+    // 3️⃣ Remaining hamesha ALL expenses se nikalega
+    const balance = income - fullMonthTotal;
+
+    const categoryLabel = isAll
+      ? "All categories"
+      : categoryFilter.join(", ");
+
+    const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
 
     const html = `
       <html>
         <head>
-          <title>Expense Bill - ${selectedMonthKey}</title>
+          <meta charset="UTF-8" />
+          <title>Expenso - Expense Bill (${selectedMonthKey})</title>
           <style>
+            * { box-sizing: border-box; }
             body {
               font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-              padding: 16px 24px;
+              padding: 24px 32px;
+              margin: 0;
+              background: #f3f4f6;
+              color: #111827;
             }
-            h1, h2, h3 {
-              margin: 0 0 8px;
+            .page {
+              max-width: 820px;
+              margin: 0 auto;
+              background: #ffffff;
+              border-radius: 12px;
+              border: 1px solid #e5e7eb;
+              padding: 24px 28px;
+              box-shadow: 0 12px 30px rgba(15, 23, 42, 0.22);
+            }
+            h1 {
+              margin: 0 0 4px;
+              font-size: 1.6rem;
+            }
+            h2 {
+              margin: 0 0 12px;
+              font-size: 1rem;
+              color: #4b5563;
+            }
+            h3 {
+              margin: 18px 0 8px;
+              font-size: 1rem;
+            }
+            .summary-grid {
+              display: grid;
+              grid-template-columns: repeat(3, minmax(0, 1fr));
+              gap: 12px;
+              margin: 14px 0 8px;
+            }
+            .summary-card {
+              background: #f9fafb;
+              border-radius: 10px;
+              border: 1px solid #e5e7eb;
+              padding: 8px 10px;
+            }
+            .label {
+              font-size: 0.75rem;
+              color: #6b7280;
+            }
+            .value {
+              margin-top: 2px;
+              font-weight: 600;
+            }
+            .summary-wide {
+              grid-column: span 3;
             }
             table {
               width: 100%;
               border-collapse: collapse;
               margin-top: 12px;
+              font-size: 0.85rem;
             }
             th, td {
-              border: 1px solid #ccc;
+              border: 1px solid #e5e7eb;
               padding: 6px 8px;
-              font-size: 14px;
               text-align: left;
             }
             th {
-              background: #f3f4f6;
+              background: #f9fafb;
+              font-weight: 600;
+            }
+            tbody tr:nth-child(even) {
+              background: #f9fafb;
             }
             tfoot td {
               font-weight: 600;
+              background: #f3f4f6;
+            }
+            .right {
+              text-align: right;
+            }
+            hr {
+              border: none;
+              border-top: 1px solid #e5e7eb;
+              margin: 18px 0;
+            }
+            .footer {
+              margin-top: 18px;
+              font-size: 0.75rem;
+              color: #6b7280;
             }
           </style>
         </head>
         <body>
-          <h1>Monthly Expense Bill</h1>
-          <h2>Month: ${selectedMonthKey}</h2>
-          <p><strong>Income:</strong> ₹${income}</p>
-          <p><strong>Total Expense:</strong> ₹${total}</p>
-          <p><strong>Balance:</strong> ₹${balance}</p>
-          <hr/>
-          <h3>Expense Details</h3>
-          ${
-            expenses.length === 0
-              ? "<p>No expenses for this month.</p>"
-              : `
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Title</th>
-                <th>Category</th>
-                <th>Amount (₹)</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${expenses
-                .map(
-                  (e) => `
+          <div class="page">
+            <h1>Expenso – Monthly Expense Bill</h1>
+            <h2>Month: ${selectedMonthKey}</h2>
+            <p><strong>Categories:</strong> ${categoryLabel}</p>
+
+            <div class="summary-grid">
+              <div class="summary-card">
+                <div class="label">Income</div>
+                <div class="value">₹${income}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Total Expense (selected)</div>
+                <div class="value">₹${total}</div>
+              </div>
+              <div class="summary-card">
+                <div class="label">Total Expense (all categories)</div>
+                <div class="value">₹${fullMonthTotal}</div>
+              </div>
+              <div class="summary-card summary-wide">
+                <div class="label">Balance (after all expenses)</div>
+                <div class="value">₹${balance}</div>
+              </div>
+            </div>
+
+            <hr />
+
+            <h3>Expense Details</h3>
+            ${expenses.length === 0
+        ? "<p>No expenses for this selection.</p>"
+        : `
+            <table>
+              <thead>
                 <tr>
-                  <td>${e.date}</td>
-                  <td>${e.title}</td>
-                  <td>${e.category || "Other"}</td>
-                  <td>${e.amount}</td>
+                  <th>Date</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th class="right">Amount (₹)</th>
                 </tr>
-              `
-                )
-                .join("")}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3">Total</td>
-                <td>₹${total}</td>
-              </tr>
-            </tfoot>
-          </table>
-          `
-          }
-          <br/>
-          <p>Generated from My Expense Tracker</p>
+              </thead>
+              <tbody>
+                ${expenses
+          .map(
+            (e) => `
+                  <tr>
+                    <td>${e.date}</td>
+                    <td>${e.title}</td>
+                    <td>${e.category || "Other"}</td>
+                    <td class="right">₹${e.amount}</td>
+                  </tr>
+                `
+          )
+          .join("")}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colspan="3">Total</td>
+                  <td class="right">₹${total}</td>
+                </tr>
+              </tfoot>
+            </table>
+            `
+      }
+
+            <div class="footer">
+              Generated from <strong>Expenso</strong>
+            </div>
+          </div>
         </body>
       </html>
     `;
@@ -357,7 +598,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>💰 My Expense Tracker</h1>
+        <h1>💰 Expenso</h1>
         <p>Simple • Fast • Personal</p>
       </header>
 
@@ -420,15 +661,11 @@ export default function App() {
             </form>
           ) : (
             <div className="inline-form">
-              <label>
-                This month income:
-                <div className="stat-value">₹{currentMonthIncome}</div>
-              </label>
               <button
                 type="button"
                 className="btn-main"
                 onClick={() => {
-                  setIncomeInput(String(currentMonthIncome)); // prefill
+                  setIncomeInput(String(currentMonthIncome));
                   setIsEditingIncome(true);
                 }}
               >
@@ -459,9 +696,7 @@ export default function App() {
           </div>
 
           {/* Current month expense list */}
-          <h3 style={{ marginTop: "12px", fontSize: "0.95rem" }}>
-            Current Month Expenses
-          </h3>
+          <h3 className="section-subtitle">Current Month Expenses</h3>
           <ul className="expense-list">
             {currentMonthExpenses.length === 0 && (
               <li className="empty">No expenses for this month yet.</li>
@@ -517,18 +752,22 @@ export default function App() {
             </label>
             <label>
               Category
-              <select
-                name="category"
-                value={expenseForm.category}
-                onChange={handleExpenseChange}
-              >
-                <option value="Food">Food</option>
-                <option value="Transport">Transport</option>
-                <option value="Shopping">Shopping</option>
-                <option value="Bills">Bills</option>
-                <option value="Entertainment">Entertainment</option>
-                <option value="Other">Other</option>
-              </select>
+              <div className="single-select-wrapper">
+                <select
+                  name="category"
+                  value={expenseForm.category}
+                  onChange={handleExpenseChange}
+                  className="single-select"
+                >
+                  <option value="Food">Food</option>
+                  <option value="Transport">Transport</option>
+                  <option value="Shopping">Shopping</option>
+                  <option value="Bills">Bills</option>
+                  <option value="Entertainment">Entertainment</option>
+                  <option value="Other">Other</option>
+                </select>
+                <span className="select-arrow">▾</span>
+              </div>
             </label>
             <button className="btn-main" type="submit">
               Add
@@ -564,14 +803,33 @@ export default function App() {
         <section className="card">
           <h2>Month Details</h2>
           <div className="month-selector">
-            <label>
-              Month:
-              <input
-                type="month"
-                value={selectedMonthKey}
-                onChange={(e) => setSelectedMonthKey(e.target.value)}
-              />
-            </label>
+            <div className="month-field">
+              <label>
+                Month
+                <input
+                  type="month"
+                  value={selectedMonthKey}
+                  onChange={(e) => {
+                    setSelectedMonthKey(e.target.value);
+                    setCategoryFilter(["All"]);
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="category-field">
+              <label className="category-label">
+                <span>Categories</span>
+                <MultiCategorySelect
+                  options={CATEGORY_OPTIONS}
+                  value={categoryFilter}
+                  onChange={setCategoryFilter}
+                />
+              </label>
+              <span className="multi-hint">
+                Click and tick categories to filter
+              </span>
+            </div>
           </div>
 
           <div className="stats-grid">
@@ -580,16 +838,33 @@ export default function App() {
               <span className="stat-value">₹{selectedMonthIncome}</span>
             </div>
             <div className="stat">
-              <span className="stat-label">Total Expense</span>
-              <span className="stat-value">₹{selectedMonthTotal}</span>
+              <span className="stat-label">
+                {categoryFilter.includes("All") || categoryFilter.length === 0
+                  ? "Total Expense"
+                  : categoryFilter.length === 1
+                    ? `Total (${categoryFilter[0]})`
+                    : `Total (${categoryFilter.length} categories)`}
+              </span>
+              <span className="stat-value">₹{filteredMonthTotal}</span>
+            </div>
+
+            <div className="stat">
+              <span className="stat-label">Remaining Amount</span>
+              <span className="stat-value">
+                ₹{selectedMonthIncome - selectedMonthTotal}
+              </span>
             </div>
           </div>
 
           <ul className="expense-list">
-            {selectedMonthExpenses.length === 0 && (
-              <li className="empty">No expenses for this month yet.</li>
+            {filteredMonthExpenses.length === 0 && (
+              <li className="empty">
+                {selectedMonthExpenses.length === 0
+                  ? "No expenses for this month yet."
+                  : "No expenses for this category selection in this month."}
+              </li>
             )}
-            {selectedMonthExpenses.map((e) => (
+            {filteredMonthExpenses.map((e) => (
               <li key={e.id} className="expense-item">
                 <div>
                   <div className="expense-title">{e.title}</div>
@@ -605,7 +880,6 @@ export default function App() {
             ))}
           </ul>
 
-          {/* Month bill download button */}
           <button
             type="button"
             className="btn-main bill-btn"
@@ -617,7 +891,7 @@ export default function App() {
       </main>
 
       <footer className="app-footer">
-        <span>Made for personal use 🧾</span>
+        <span>Made for personal use 🧾 – Expenso</span>
       </footer>
     </div>
   );

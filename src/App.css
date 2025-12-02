@@ -93,6 +93,12 @@ body {
   font-size: 1.1rem;
 }
 
+/* section subtitle (current month expenses heading) */
+.section-subtitle {
+  margin-top: 12px;
+  font-size: 0.95rem;
+}
+
 /* row header (title + button) */
 .card-header-row {
   display: flex;
@@ -157,9 +163,13 @@ label {
   font-size: 0.85rem;
 }
 
+/* Base input/select styling (height + look same sab ke liye) */
 input,
-select {
-  padding: 7px 9px;
+select,
+.single-select,
+.multi-select-trigger {
+  padding: 7px 10px;
+  min-height: 38px;
   border-radius: 10px;
   border: 1px solid #374151;
   background: #020617;
@@ -252,7 +262,7 @@ button:disabled:hover {
 /* income buttons row (Save + Cancel) */
 .income-actions-row {
   display: flex;
-  flex-direction: column;   /* 2 ek sath nahi, ek ke niche ek */
+  flex-direction: column;
   gap: 8px;
   margin-top: 4px;
 }
@@ -262,7 +272,7 @@ button:disabled:hover {
 .backup-row {
   margin-top: 14px;
   display: flex;
-  flex-direction: column;   /* download + restore vertical */
+  flex-direction: column;
   align-items: flex-start;
   gap: 10px;
 }
@@ -291,21 +301,150 @@ button:disabled:hover {
   margin-top: 10px;
 }
 
-/* ---------- EXPENSE LIST ---------- */
+/* ---------- MONTH SELECTOR (50-50) ---------- */
 
 .month-selector {
   margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
 }
+
+/* Month + Category 50-50 width */
+.month-field,
+.category-field {
+  flex: 1;
+}
+
+.category-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ---------- SINGLE SELECT (Add Expense category) ---------- */
+
+.single-select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* extra right padding arrow ke liye, height same rahegi */
+.single-select {
+  width: 100%;
+  padding-right: 34px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+/* Solid arrow – same style as month/categories */
+.select-arrow {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+/* ---------- CUSTOM MULTI-SELECT (Month Details categories) ---------- */
+
+.multi-select {
+  position: relative;
+  width: 100%;
+}
+
+/* multi-select-trigger already height + padding input group se le raha hai */
+.multi-select-trigger {
+  border-radius: 10px;
+  border: 1px solid #374151;
+  background: #020617;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.multi-select-trigger:active {
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.6);
+}
+
+.multi-select-value {
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.multi-select-arrow {
+  margin-left: 8px;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.multi-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  margin-top: 4px;
+  border-radius: 10px;
+  border: 1px solid #374151;
+  background: #020617;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.65);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 30;
+}
+
+.multi-select-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.multi-select-option:hover {
+  background: #050d2e;
+}
+
+.multi-select-option input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #4f46e5;
+  min-height: auto;
+}
+
+/* Small hint text under multi-select */
+.multi-hint {
+  display: block;
+  margin-top: 2px;
+  margin-left: 2px;
+  font-size: 0.7rem;
+  color: #6b7280;
+  line-height: 1.2;
+}
+
+/* ---------- EXPENSE LIST ---------- */
 
 .expense-list {
   list-style: none;
   padding: 0;
   margin: 10px 0 0;
-  max-height: 160px; /* ~ 3 items visible */
-  overflow-y: auto; /* scroll when more items */
+  max-height: 160px;
+  overflow-y: auto;
 }
 
-/* 👇 Thin scrollbar: single line feel only for list */
+/* Thin scrollbar */
 .expense-list::-webkit-scrollbar {
   width: 4px;
 }
@@ -353,7 +492,7 @@ button:disabled:hover {
   font-weight: 500;
 }
 
-/* new meta line: category + date */
+/* meta line: category + date */
 .expense-meta {
   margin-top: 2px;
   display: flex;
@@ -410,6 +549,11 @@ button:disabled:hover {
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* agar phone pe bhi month + category ek line me chahiye to row hi rehne do */
+  .month-selector {
+    flex-direction: row;
+  }
 }
 
 /* Laptop / bigger screens – 2-column dashboard */
@@ -419,13 +563,11 @@ button:disabled:hover {
     column-gap: 24px;
   }
 
-  /* First two cards side-by-side */
   .app-main > section:nth-child(1),
   .app-main > section:nth-child(2) {
     grid-column: span 1;
   }
 
-  /* Remaining cards full width (2 columns span) */
   .app-main > section:nth-child(n + 3) {
     grid-column: span 2;
   }
