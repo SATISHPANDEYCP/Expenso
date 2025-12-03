@@ -3,22 +3,21 @@ import "./App.css";
 
 const STORAGE_KEY = "personal-expense-app";
 const CATEGORY_OPTIONS = [
-  "All",
-  "Food",
-  "Transport",
-  "Shopping",
-  "Bills",
-  "Entertainment",
-  "Other",
+  "✨ All",
+  "🍽️ Food",
+  "🚗 Transport",
+  "🛒 Shopping",
+  "🧾 Bills",
+  "🎮 Entertainment",
+  "🏠 Rent",
+  "💡 Other",
 ];
-
-// ---------- HELPER FUNCTIONS ----------
 
 function getMonthKey(dateStr) {
   const d = new Date(dateStr);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`; // e.g. 2025-12
+  return `${y}-${m}`;
 }
 
 function getPrevMonthKey(currentKey) {
@@ -38,13 +37,9 @@ function getTodayDateStr() {
   return `${y}-${m}-${day}`;
 }
 
-// ---------- CUSTOM MULTI-SELECT DROPDOWN ----------
-
 function MultiCategorySelect({ options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-
-  // dropdown ke bahar click → close
   useEffect(() => {
     function handleClickOutside(e) {
       if (ref.current && !ref.current.contains(e.target)) {
@@ -77,7 +72,6 @@ function MultiCategorySelect({ options, value, onChange }) {
       }
       if (next.length === 0) next = ["All"];
     }
-
     onChange(next);
   };
 
@@ -93,29 +87,28 @@ function MultiCategorySelect({ options, value, onChange }) {
 
       {open && (
         <div className="multi-select-dropdown">
-          {options.map((opt) => {
-            const checked = isAll ? opt === "All" : value.includes(opt);
-            return (
-              <label key={opt} className="multi-select-option">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleOption(opt)}
-                />
-                <span>{opt === "All" ? "All categories" : opt}</span>
-              </label>
-            );
-          })}
+          <div className="multi-select-dropdown-child">
+            {options.map((opt) => {
+              const checked = isAll ? opt === "All" : value.includes(opt);
+              return (
+                <label key={opt} className="multi-select-option">
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleOption(opt)}
+                  />
+                  <span>{opt === "All" ? "All categories" : opt}</span>
+                </label>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// ---------- MAIN APP ----------
-
 export default function App() {
-  // ---- Data state (loaded directly from localStorage) ----
   const [data, setData] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -148,22 +141,14 @@ export default function App() {
   const [selectedMonthKey, setSelectedMonthKey] = useState(
     getMonthKey(getTodayDateStr())
   );
-
-  // Category filter as MULTI-SELECT (default: ["All"])
   const [categoryFilter, setCategoryFilter] = useState(["All"]);
-
-  // income edit / view toggle
   const [isEditingIncome, setIsEditingIncome] = useState(false);
-
-  // ---- Save to localStorage on every change ----
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
 
   const currentMonthKey = getMonthKey(getTodayDateStr());
   const prevMonthKey = getPrevMonthKey(currentMonthKey);
-
-  // ---- Derived values ----
   const currentMonthIncome = data.incomes[currentMonthKey] || 0;
   const prevMonthIncome = data.incomes[prevMonthKey] || 0;
 
@@ -187,7 +172,6 @@ export default function App() {
     [prevMonthExpenses]
   );
 
-  // Weekly (last 7 days) expenses of current month
   const weeklyTotal = useMemo(() => {
     const today = new Date(getTodayDateStr());
     const sevenDaysAgo = new Date(getTodayDateStr());
@@ -202,11 +186,9 @@ export default function App() {
     }, 0);
   }, [currentMonthExpenses]);
 
-  // Weekly limit = monthly income / 4 (simple)
   const weeklyLimit = currentMonthIncome / 4;
   const showWarning = weeklyLimit > 0 && weeklyTotal > weeklyLimit * 0.8;
 
-  // ---- Handlers ----
   const handleIncomeSave = (e) => {
     e.preventDefault();
     const income = Number(incomeInput);
@@ -271,7 +253,6 @@ export default function App() {
 
   const selectedMonthIncome = data.incomes[selectedMonthKey] || 0;
 
-  // Category filtered expenses for Month Details (multi-select)
   const filteredMonthExpenses = useMemo(() => {
     if (categoryFilter.includes("All") || categoryFilter.length === 0) {
       return selectedMonthExpenses;
@@ -289,26 +270,6 @@ export default function App() {
   const hasData =
     data.expenses.length > 0 || Object.keys(data.incomes).length > 0;
 
-  // ---------- BACKUP / RESTORE HANDLERS ----------
-
-  // const handleBackupDownload = () => {
-  //   if (!hasData) return;
-  //   const json = JSON.stringify(data, null, 2);
-  //   const blob = new Blob([json], { type: "application/json" });
-  //   const url = URL.createObjectURL(blob);
-
-  //   const a = document.createElement("a");
-  //   a.href = url;
-  //   a.download = "expense-backup.json";
-  //   a.click();
-
-  //   URL.revokeObjectURL(url);
-  // };
-
-
-
-
-
   const handleBackupDownload = () => {
     if (!hasData) return;
 
@@ -316,7 +277,6 @@ export default function App() {
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
 
-    // 👉 current date-time se file name banana
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
@@ -325,22 +285,14 @@ export default function App() {
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
 
-    // Windows me ":" allowed nahi hota, isliye "-" use kiya
     const fileName = `expenso-backup_${y}-${m}-${d}_${hh}-${mm}-${ss}.json`;
 
     const a = document.createElement("a");
     a.href = url;
-    a.download = fileName;   // 👈 yahan new naam
+    a.download = fileName;
     a.click();
-
     URL.revokeObjectURL(url);
   };
-
-
-
-
-
-
 
   const handleBackupRestore = (event) => {
     const file = event.target.files?.[0];
@@ -394,7 +346,6 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  // ---------- DOWNLOAD BILL (for selected month + selected categories) ----------
   const handleDownloadBill = () => {
     const isAll =
       categoryFilter.includes("All") || categoryFilter.length === 0;
@@ -402,16 +353,13 @@ export default function App() {
     const expenses = isAll ? selectedMonthExpenses : filteredMonthExpenses;
     const income = selectedMonthIncome;
 
-    // 1️⃣ Selected categories ka total
     const total = expenses.reduce((s, e) => s + e.amount, 0);
 
-    // 2️⃣ Poore month ka total (ALL categories)
     const fullMonthTotal = selectedMonthExpenses.reduce(
       (s, e) => s + e.amount,
       0
     );
 
-    // 3️⃣ Remaining hamesha ALL expenses se nikalega
     const balance = income - fullMonthTotal;
 
     const categoryLabel = isAll
@@ -598,12 +546,15 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>💰 Expenso</h1>
+        <h1>
+          <span className="app-header-logo">₹</span>
+          Expenso
+        </h1>
         <p>Simple • Fast • Personal</p>
       </header>
 
+
       <main className="app-main">
-        {/* Current month summary */}
         <section className="card">
           <h2>Current Month ({currentMonthKey})</h2>
           <div className="stats-grid">
@@ -628,7 +579,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Income block: show form OR edit button */}
           {currentMonthIncome === 0 || isEditingIncome ? (
             <form className="inline-form" onSubmit={handleIncomeSave}>
               <label>
@@ -674,7 +624,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Backup / Restore buttons */}
           <div className="backup-row">
             <button
               type="button"
@@ -695,7 +644,6 @@ export default function App() {
             </label>
           </div>
 
-          {/* Current month expense list */}
           <h3 className="section-subtitle">Current Month Expenses</h3>
           <ul className="expense-list">
             {currentMonthExpenses.length === 0 && (
@@ -718,7 +666,6 @@ export default function App() {
           </ul>
         </section>
 
-        {/* Add expense */}
         <section className="card">
           <h2>Add Expense</h2>
           <form className="form" onSubmit={handleAddExpense}>
@@ -759,12 +706,13 @@ export default function App() {
                   onChange={handleExpenseChange}
                   className="single-select"
                 >
-                  <option value="Food">Food</option>
-                  <option value="Transport">Transport</option>
-                  <option value="Shopping">Shopping</option>
-                  <option value="Bills">Bills</option>
-                  <option value="Entertainment">Entertainment</option>
-                  <option value="Other">Other</option>
+                  <option value="Food">🍽️ Food</option>
+                  <option value="Transport">🚗 Transport</option>
+                  <option value="Shopping">🛒 Shopping</option>
+                  <option value="Bills">🧾 Bills</option>
+                  <option value="Entertainment">🎮 Entertainment</option>
+                  <option value="Rent">🏠 Rent</option>
+                  <option value="Other">💡 Other</option>
                 </select>
                 <span className="select-arrow">▾</span>
               </div>
@@ -775,7 +723,6 @@ export default function App() {
           </form>
         </section>
 
-        {/* Previous month quick view */}
         <section className="card">
           <div className="card-header-row">
             <h2>Previous Month ({prevMonthKey})</h2>
@@ -799,7 +746,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* Any month details (including previous) */}
         <section className="card">
           <h2>Month Details</h2>
           <div className="month-selector">

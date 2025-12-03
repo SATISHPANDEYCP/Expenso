@@ -1,4 +1,3 @@
-/* ---------- GLOBAL ---------- */
 * {
   box-sizing: border-box;
 }
@@ -11,7 +10,6 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
-
   background:
     radial-gradient(circle at 40% 45%,
       rgba(139, 92, 246, 0.18),
@@ -20,19 +18,14 @@ body {
       rgba(45, 212, 191, 0.10),
       transparent 55%),
     #020617;
-
   color: #e5e7eb;
 }
-
-/* ---------- APP LAYOUT ---------- */
 
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
-
-/* Header */
 
 .app-header {
   padding: 18px 20px 14px;
@@ -45,10 +38,28 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.app-header-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  margin-right: 8px;
+  background: radial-gradient(circle at 30% 20%, #fef3c7, #f59e0b);
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.75);
+  font-size: 0.9rem;
+  color: #1f2937;
+  font-weight: 700;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 1.7rem;
   letter-spacing: 0.03em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-header p {
@@ -57,8 +68,6 @@ body {
   font-size: 0.9rem;
 }
 
-/* Main – centered container with grid */
-
 .app-main {
   width: 100%;
   max-width: 1100px;
@@ -66,10 +75,8 @@ body {
   padding: 0 16px 40px;
   display: grid;
   gap: 16px;
-  grid-template-columns: 1fr; /* mobile default */
+  grid-template-columns: 1fr;
 }
-
-/* ---------- CARDS ---------- */
 
 .card {
   background: rgba(15, 23, 42, 0.9);
@@ -93,21 +100,17 @@ body {
   font-size: 1.1rem;
 }
 
-/* section subtitle (current month expenses heading) */
 .section-subtitle {
   margin-top: 12px;
   font-size: 0.95rem;
 }
 
-/* row header (title + button) */
 .card-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
 }
-
-/* ---------- STATS GRID ---------- */
 
 .stats-grid {
   display: grid;
@@ -135,8 +138,6 @@ body {
   margin-top: 2px;
 }
 
-/* Warning message */
-
 .warning {
   margin-top: 8px;
   padding: 8px 10px;
@@ -145,8 +146,6 @@ body {
   border: 1px solid #f87171;
   font-size: 0.85rem;
 }
-
-/* ---------- FORMS ---------- */
 
 .inline-form,
 .form {
@@ -163,7 +162,6 @@ label {
   font-size: 0.85rem;
 }
 
-/* Base input/select styling (height + look same sab ke liye) */
 input,
 select,
 .single-select,
@@ -191,8 +189,6 @@ input::placeholder {
   color: #6b7280;
 }
 
-/* ---------- BUTTONS ---------- */
-
 button {
   border: none;
   margin-top: 2px;
@@ -219,7 +215,6 @@ button:active {
   box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
 }
 
-/* disabled state */
 button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -234,15 +229,12 @@ button:disabled:hover {
   filter: none;
 }
 
-/* main big buttons — same size */
 .btn-main {
   display: block;
   width: 100%;
   max-width: 340px;
   text-align: center;
 }
-
-/* “Show full details” & Cancel secondary button */
 
 .btn-secondary {
   margin-top: 0;
@@ -259,15 +251,12 @@ button:disabled:hover {
   filter: none;
 }
 
-/* income buttons row (Save + Cancel) */
 .income-actions-row {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-top: 4px;
 }
-
-/* ---------- BACKUP SECTION ---------- */
 
 .backup-row {
   margin-top: 14px;
@@ -296,12 +285,9 @@ button:disabled:hover {
   cursor: pointer;
 }
 
-/* bill button extra spacing */
 .bill-btn {
   margin-top: 10px;
 }
-
-/* ---------- MONTH SELECTOR (50-50) ---------- */
 
 .month-selector {
   margin-bottom: 10px;
@@ -310,7 +296,6 @@ button:disabled:hover {
   align-items: flex-start;
 }
 
-/* Month + Category 50-50 width */
 .month-field,
 .category-field {
   flex: 1;
@@ -322,14 +307,11 @@ button:disabled:hover {
   gap: 4px;
 }
 
-/* ---------- SINGLE SELECT (Add Expense category) ---------- */
-
 .single-select-wrapper {
   position: relative;
   width: 100%;
 }
 
-/* extra right padding arrow ke liye, height same rahegi */
 .single-select {
   width: 100%;
   padding-right: 34px;
@@ -338,7 +320,6 @@ button:disabled:hover {
   -moz-appearance: none;
 }
 
-/* Solid arrow – same style as month/categories */
 .select-arrow {
   position: absolute;
   top: 50%;
@@ -349,14 +330,11 @@ button:disabled:hover {
   pointer-events: none;
 }
 
-/* ---------- CUSTOM MULTI-SELECT (Month Details categories) ---------- */
-
 .multi-select {
   position: relative;
   width: 100%;
 }
 
-/* multi-select-trigger already height + padding input group se le raha hai */
 .multi-select-trigger {
   border-radius: 10px;
   border: 1px solid #374151;
@@ -399,8 +377,48 @@ button:disabled:hover {
   background: #020617;
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.65);
   max-height: 220px;
-  overflow-y: auto;
   z-index: 30;
+  overflow: hidden;
+  padding: 5px;
+}
+
+.multi-select-dropdown-child {
+  max-height: 200px;
+  overflow-y: auto;
+  width: 100%;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 transparent;
+}
+
+.multi-select-dropdown-child::-webkit-scrollbar {
+  width: 6px;
+}
+
+.multi-select-dropdown-child::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 6px 0;
+}
+
+.multi-select-dropdown-child::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 999px;
+}
+
+.multi-select-dropdown-child::-webkit-scrollbar-button {
+  height: 8px;
+}
+
+.multi-select-dropdown-child::-webkit-scrollbar-button:single-button:vertical:decrement {
+  border-style: solid;
+  border-width: 0 4px 4px 4px;
+  border-color: transparent transparent #4b5563 transparent;
+}
+
+.multi-select-dropdown-child::-webkit-scrollbar-button:single-button:vertical:increment {
+  border-style: solid;
+  border-width: 4px 4px 0 4px;
+  border-color: #4b5563 transparent transparent transparent;
 }
 
 .multi-select-option {
@@ -409,7 +427,7 @@ button:disabled:hover {
   align-items: center;
   justify-content: flex-start;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 4px 5px;
   font-size: 0.85rem;
   cursor: pointer;
 }
@@ -424,7 +442,6 @@ button:disabled:hover {
   min-height: auto;
 }
 
-/* Small hint text under multi-select */
 .multi-hint {
   display: block;
   margin-top: 2px;
@@ -434,8 +451,6 @@ button:disabled:hover {
   line-height: 1.2;
 }
 
-/* ---------- EXPENSE LIST ---------- */
-
 .expense-list {
   list-style: none;
   padding: 0;
@@ -444,7 +459,6 @@ button:disabled:hover {
   overflow-y: auto;
 }
 
-/* Thin scrollbar */
 .expense-list::-webkit-scrollbar {
   width: 4px;
 }
@@ -462,7 +476,6 @@ button:disabled:hover {
   background: #9ca3af;
 }
 
-/* Firefox */
 .expense-list {
   scrollbar-width: thin;
   scrollbar-color: #4b5563 transparent;
@@ -492,7 +505,6 @@ button:disabled:hover {
   font-weight: 500;
 }
 
-/* meta line: category + date */
 .expense-meta {
   margin-top: 2px;
   display: flex;
@@ -520,15 +532,11 @@ button:disabled:hover {
   font-size: 0.95rem;
 }
 
-/* Empty state */
-
 .empty {
   text-align: center;
   font-size: 0.8rem;
   color: #6b7280;
 }
-
-/* ---------- FOOTER ---------- */
 
 .app-footer {
   text-align: center;
@@ -538,9 +546,6 @@ button:disabled:hover {
   border-top: 1px solid rgba(31, 41, 55, 0.5);
 }
 
-/* ---------- RESPONSIVE BREAKPOINTS ---------- */
-
-/* Mobile tweaks */
 @media (max-width: 600px) {
   .app-main {
     padding: 0 12px 32px;
@@ -550,25 +555,23 @@ button:disabled:hover {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* agar phone pe bhi month + category ek line me chahiye to row hi rehne do */
   .month-selector {
     flex-direction: row;
   }
 }
 
-/* Laptop / bigger screens – 2-column dashboard */
 @media (min-width: 900px) {
   .app-main {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 24px;
   }
 
-  .app-main > section:nth-child(1),
-  .app-main > section:nth-child(2) {
+  .app-main>section:nth-child(1),
+  .app-main>section:nth-child(2) {
     grid-column: span 1;
   }
 
-  .app-main > section:nth-child(n + 3) {
+  .app-main>section:nth-child(n + 3) {
     grid-column: span 2;
   }
 }
