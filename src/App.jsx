@@ -1,17 +1,86 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import "./App.css";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as ReTooltip,
+  Legend,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from "recharts";
 
 const STORAGE_KEY = "personal-expense-app";
-const CATEGORY_OPTIONS = [
-  "✨ All",
-  "🍽️ Food",
-  "🚗 Transport",
-  "🛒 Shopping",
-  "🧾 Bills",
-  "🎮 Entertainment",
-  "🏠 Rent",
-  "💡 Other",
+
+const CATEGORY_KEYS = [
+  "All",
+  "Food",
+  "Transport",
+  "Shopping",
+  "Bills",
+  "Entertainment",
+  "Rent",
+  "Other",
 ];
+
+const CATEGORY_LABELS = {
+  All: "All categories",
+  Food: "🍽️ Food",
+  Transport: "🚗 Transport",
+  Shopping: "🛒 Shopping",
+  Bills: "🧾 Bills",
+  Entertainment: "🎮 Entertainment",
+  Rent: "🏠 Rent",
+  Other: "💡 Other",
+};
+
+const DONUT_COLORS = [
+  "#f97316", // orange
+  "#22c55e", // green
+  "#6366f1", // indigo
+  "#eab308", // amber
+  "#ec4899", // pink
+  "#06b6d4", // cyan
+  "#a855f7", // violet
+];
+
+// 🔢 for percentage label on donut
+const RADIAN = Math.PI / 180;
+const renderDonutLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+  index,
+}) => {
+  if (!percent || percent < 0.06) return null;
+
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.20;
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  const pct = (percent * 100).toFixed(0);
+  if (pct === "0") return null;
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#020617"
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+      fontSize={11}
+      fontWeight={600}
+    >
+      {`${pct}%`}
+    </text>
+  );
+};
 
 function getMonthKey(dateStr) {
   const d = new Date(dateStr);
@@ -53,26 +122,39 @@ function MultiCategorySelect({ options, value, onChange }) {
 
   const isAll = value.includes("All") || value.length === 0;
 
+  const displayLabel = (opt) =>
+    opt === "All" ? "All categories" : CATEGORY_LABELS[opt] || opt;
+
   const displayText = isAll
     ? "All categories"
     : value.length === 1
-    ? value[0]
+    ? displayLabel(value[0])
     : `${value.length} categories selected`;
 
   const toggleOption = (opt) => {
     let next = value;
+    const currentlyAll = value.includes("All");
 
     if (opt === "All") {
-      next = ["All"];
-    } else {
-      const has = value.includes(opt);
-      if (has) {
-        next = value.filter((v) => v !== opt);
+      if (currentlyAll && value.length === 1) {
+        // All is already selected alone → clear all (but filter still treats as "All")
+        next = [];
       } else {
-        next = value.filter((v) => v !== "All").concat(opt);
+        // Select only All
+        next = ["All"];
       }
-      if (next.length === 0) next = ["All"];
+    } else {
+      // Toggling a normal category
+      let base = currentlyAll ? [] : value.filter((v) => v !== "All");
+      const has = base.includes(opt);
+      if (has) {
+        base = base.filter((v) => v !== opt);
+      } else {
+        base = base.concat(opt);
+      }
+      next = base;
     }
+
     onChange(next);
   };
 
@@ -98,7 +180,7 @@ function MultiCategorySelect({ options, value, onChange }) {
                     checked={checked}
                     onChange={() => toggleOption(opt)}
                   />
-                  <span>{opt === "All" ? "All categories" : opt}</span>
+                  <span>{displayLabel(opt)}</span>
                 </label>
               );
             })}
@@ -145,8 +227,11 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState(["All"]);
   const [isEditingIncome, setIsEditingIncome] = useState(false);
 
-  // 🆕 which expense is being edited
+  // which expense is being edited
   const [editingExpenseId, setEditingExpenseId] = useState(null);
+
+  // 🔽 Add/Edit form ke liye ref (scroll on edit)
+  const editFormRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -214,7 +299,7 @@ export default function App() {
     }));
   };
 
-  // ➕ Add OR 🔁 Edit expense
+  // Add OR edit expense
   const handleAddExpense = (e) => {
     e.preventDefault();
     const title = expenseForm.title.trim();
@@ -269,7 +354,7 @@ export default function App() {
     setEditingExpenseId(null);
   };
 
-  // ❌ delete single expense
+  // delete single expense
   const handleDeleteExpense = (id) => {
     const ok = window.confirm("Delete this expense?");
     if (!ok) return;
@@ -280,7 +365,7 @@ export default function App() {
     }));
   };
 
-  // ✏ start editing
+  // start editing
   const handleEditExpense = (expense) => {
     setEditingExpenseId(expense.id);
     setExpenseForm({
@@ -289,6 +374,16 @@ export default function App() {
       date: expense.date,
       category: expense.category || "Other",
     });
+
+    // 🔽 Auto-scroll to Add/Edit form
+    setTimeout(() => {
+      if (editFormRef.current) {
+        editFormRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    }, 100);
   };
 
   const selectedMonthExpenses = useMemo(
@@ -384,7 +479,7 @@ export default function App() {
             };
           });
 
-          alert("Backup merged successfully ✅ (old + new data dono)");
+          alert("Backup merged successfully ✅ (old + new data together)");
         } else {
           alert("Invalid backup file ❌");
         }
@@ -594,6 +689,59 @@ export default function App() {
     win.print();
   };
 
+  // Donut chart data (selected month, all categories)
+  const categoryDonutData = useMemo(() => {
+    if (selectedMonthExpenses.length === 0) return [];
+    const map = {};
+    selectedMonthExpenses.forEach((e) => {
+      const key = e.category || "Other";
+      map[key] = (map[key] || 0) + e.amount;
+    });
+    return Object.entries(map).map(([key, value]) => ({
+      key,
+      name: CATEGORY_LABELS[key] || key,
+      value,
+    }));
+  }, [selectedMonthExpenses]);
+
+  // last 6 months (current month + previous 5)
+  const lastSixMonthKeys = useMemo(() => {
+    const result = [];
+    const [year, month] = currentMonthKey.split("-").map(Number);
+    const base = new Date(year, month - 1, 1);
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(base);
+      d.setMonth(d.getMonth() - i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      result.push(`${y}-${m}`);
+    }
+    return result;
+  }, [currentMonthKey]);
+
+  const sixMonthTrendData = useMemo(() => {
+    return lastSixMonthKeys.map((key) => {
+      const income = data.incomes[key] || 0;
+      const expense = data.expenses
+        .filter((e) => e.monthKey === key)
+        .reduce((s, e) => s + e.amount, 0);
+
+      const [y, m] = key.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, 1);
+      const monthShort = dateObj.toLocaleString("en-US", { month: "short" });
+      const shortLabel = `${monthShort} ${(y % 100)
+        .toString()
+        .padStart(2, "0")}`;
+
+      return {
+        monthKey: key,
+        shortLabel,
+        income,
+        expense,
+      };
+    });
+  }, [lastSixMonthKeys, data.expenses, data.incomes]);
+
   return (
     <div className="app">
       <header className="app-header">
@@ -626,7 +774,7 @@ export default function App() {
           {showWarning && (
             <div className="warning">
               ⚠️ Weekly spending is more than 80% of your limit (₹
-              {weeklyLimit.toFixed(0)}). Thoda dhyaan se kharch karo 🙂
+              {weeklyLimit.toFixed(0)}). Try to spend a bit carefully 🙂
             </div>
           )}
 
@@ -720,7 +868,7 @@ export default function App() {
                       onClick={() => handleEditExpense(e)}
                       title="Edit"
                     >
-                      <i class="fa-solid fa-pen-to-square"></i>
+                      <i className="fa-solid fa-pen-to-square"></i>
                     </button>
                     <button
                       type="button"
@@ -728,7 +876,7 @@ export default function App() {
                       onClick={() => handleDeleteExpense(e.id)}
                       title="Delete"
                     >
-                      <i class="fa-solid fa-trash"></i>
+                      <i className="fa-solid fa-trash"></i>
                     </button>
                   </div>
                 </div>
@@ -738,7 +886,7 @@ export default function App() {
         </section>
 
         {/* ADD / EDIT EXPENSE CARD */}
-        <section className="card">
+        <section className="card" ref={editFormRef}>
           <h2>{editingExpenseId ? "Edit Expense" : "Add Expense"}</h2>
           <form className="form" onSubmit={handleAddExpense}>
             <label>
@@ -859,7 +1007,7 @@ export default function App() {
               <label className="category-label">
                 <span>Categories</span>
                 <MultiCategorySelect
-                  options={CATEGORY_OPTIONS}
+                  options={CATEGORY_KEYS}
                   value={categoryFilter}
                   onChange={setCategoryFilter}
                 />
@@ -922,7 +1070,7 @@ export default function App() {
                       onClick={() => handleEditExpense(e)}
                       title="Edit"
                     >
-                      <i class="fa-solid fa-pen-to-square"></i>
+                      <i className="fa-solid fa-pen-to-square"></i>
                     </button>
                     <button
                       type="button"
@@ -930,7 +1078,7 @@ export default function App() {
                       onClick={() => handleDeleteExpense(e.id)}
                       title="Delete"
                     >
-                      <i class="fa-solid fa-trash"></i>
+                      <i className="fa-solid fa-trash"></i>
                     </button>
                   </div>
                 </div>
@@ -945,6 +1093,155 @@ export default function App() {
           >
             Download Bill (PDF / Print)
           </button>
+        </section>
+
+        {/* INSIGHTS & GRAPHS – LAST CARD */}
+        <section className="card">
+          <h2>Insights & Graphs</h2>
+          <div className="chart-row">
+            {/* Donut chart – category breakdown */}
+            <div className="chart-box">
+              <div className="chart-heading">
+                Category Breakdown – {selectedMonthKey}
+              </div>
+              <div className="chart-sub">
+                Split of all expenses for the selected month.
+              </div>
+
+              {categoryDonutData.length === 0 ? (
+                <div className="chart-empty">
+                  No expenses for this month yet, so the chart is empty.
+                </div>
+              ) : (
+                <div className="chart-inner">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <ReTooltip
+                        formatter={(value, name) => [`₹${value}`, name]}
+                        contentStyle={{
+                          background: "#020617",
+                          borderRadius: "10px",
+                          border: "1px solid #1f2937",
+                          boxShadow: "0 12px 30px rgba(15,23,42,0.9)",
+                          padding: "8px 10px",
+                          color: "#e5e7eb",
+                        }}
+                        labelStyle={{
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          color: "#e5e7eb",
+                          marginBottom: 4,
+                        }}
+                        itemStyle={{
+                          fontSize: "0.78rem",
+                          color: "#e5e7eb",
+                        }}
+                      />
+                      <Legend />
+                      <Pie
+                        data={categoryDonutData}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius="55%"
+                        outerRadius="85%"
+                        paddingAngle={3}
+                        labelLine={false}
+                        label={renderDonutLabel}
+                      >
+                        {categoryDonutData.map((entry, index) => (
+                          <Cell
+                            key={entry.key}
+                            fill={DONUT_COLORS[index % DONUT_COLORS.length]}
+                          />
+                        ))}
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+
+            {/* Line chart – last 6 months */}
+            <div className="chart-box">
+              <div className="chart-heading">
+                Last 6 Months – Income vs Expense
+              </div>
+              <div className="chart-sub">
+                Overall trend for the last 6 months from the current month.
+              </div>
+
+              {sixMonthTrendData.every(
+                (d) => d.income === 0 && d.expense === 0
+              ) ? (
+                <div className="chart-empty">
+                  Not enough data for the last 6 months yet. As you add data,
+                  this graph will fill automatically.
+                </div>
+              ) : (
+                <div className="chart-inner">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={sixMonthTrendData}
+                      margin={{ top: 8, right: 10, left: -10, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                      <XAxis dataKey="shortLabel" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <ReTooltip
+                        formatter={(value, name, item) => {
+                          const key = item?.dataKey;
+                          const label = key === "income" ? "Income" : "Expense";
+                          return [`₹${value}`, label];
+                        }}
+                        labelFormatter={(label, payload) =>
+                          payload?.[0]?.payload?.monthKey
+                            ? `Month: ${payload[0].payload.monthKey}`
+                            : `Month`
+                        }
+                        contentStyle={{
+                          background: "#020617",
+                          borderRadius: "10px",
+                          border: "1px solid #1f2937",
+                          boxShadow: "0 12px 30px rgba(15,23,42,0.9)",
+                          padding: "8px 10px",
+                          color: "#e5e7eb",
+                        }}
+                        labelStyle={{
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          color: "#e5e7eb",
+                          marginBottom: 4,
+                        }}
+                        itemStyle={{
+                          fontSize: "0.78rem",
+                          color: "#e5e7eb",
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="income"
+                        name="Income"
+                        stroke="#22c55e"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="expense"
+                        name="Expense"
+                        stroke="#6366f1"
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
         </section>
       </main>
 
