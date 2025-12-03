@@ -532,6 +532,61 @@ button:disabled:hover {
   font-size: 0.95rem;
 }
 
+/* 🆕 right side (amount + icons) */
+.expense-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.expense-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* 🆕 icon-only buttons (no bg, no pill) */
+/* icon-only button */
+.icon-btn {
+  padding: 0;
+  margin-top: 0;
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+  box-shadow: none;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  min-width: auto;
+  height: auto;
+}
+
+/* hover */
+.icon-btn:hover {
+  color: #e5e7eb;
+  background: transparent;
+  transform: none;
+  filter: none;
+  box-shadow: none;
+}
+
+/* 🧨 active + focus states ko bhi reset kar do */
+.icon-btn:active,
+.icon-btn:focus,
+.icon-btn:focus-visible {
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+  filter: none;
+  outline: none;
+}
+
+/* font awesome icon ka size */
+.icon-btn i {
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+
 .empty {
   text-align: center;
   font-size: 0.8rem;

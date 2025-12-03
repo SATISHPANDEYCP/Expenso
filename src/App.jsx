@@ -40,6 +40,7 @@ function getTodayDateStr() {
 function MultiCategorySelect({ options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (ref.current && !ref.current.contains(e.target)) {
@@ -55,8 +56,8 @@ function MultiCategorySelect({ options, value, onChange }) {
   const displayText = isAll
     ? "All categories"
     : value.length === 1
-      ? value[0]
-      : `${value.length} categories selected`;
+    ? value[0]
+    : `${value.length} categories selected`;
 
   const toggleOption = (opt) => {
     let next = value;
@@ -143,6 +144,10 @@ export default function App() {
   );
   const [categoryFilter, setCategoryFilter] = useState(["All"]);
   const [isEditingIncome, setIsEditingIncome] = useState(false);
+
+  // 🆕 which expense is being edited
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
@@ -209,6 +214,7 @@ export default function App() {
     }));
   };
 
+  // ➕ Add OR 🔁 Edit expense
   const handleAddExpense = (e) => {
     e.preventDefault();
     const title = expenseForm.title.trim();
@@ -219,25 +225,69 @@ export default function App() {
 
     const monthKey = getMonthKey(dateStr);
 
-    const newExpense = {
-      id: Date.now().toString(),
-      title,
-      amount: amountNum,
-      date: dateStr,
-      monthKey,
-      category: expenseForm.category || "Other",
-    };
+    if (editingExpenseId) {
+      // Edit existing
+      setData((prev) => ({
+        ...prev,
+        expenses: prev.expenses.map((exp) =>
+          exp.id === editingExpenseId
+            ? {
+                ...exp,
+                title,
+                amount: amountNum,
+                date: dateStr,
+                monthKey,
+                category: expenseForm.category || "Other",
+              }
+            : exp
+        ),
+      }));
+    } else {
+      // Add new
+      const newExpense = {
+        id: Date.now().toString(),
+        title,
+        amount: amountNum,
+        date: dateStr,
+        monthKey,
+        category: expenseForm.category || "Other",
+      };
 
-    setData((prev) => ({
-      ...prev,
-      expenses: [newExpense, ...prev.expenses],
-    }));
+      setData((prev) => ({
+        ...prev,
+        expenses: [newExpense, ...prev.expenses],
+      }));
+    }
 
+    // reset form + clear edit mode
     setExpenseForm({
       title: "",
       amount: "",
       date: getTodayDateStr(),
       category: "Other",
+    });
+    setEditingExpenseId(null);
+  };
+
+  // ❌ delete single expense
+  const handleDeleteExpense = (id) => {
+    const ok = window.confirm("Delete this expense?");
+    if (!ok) return;
+
+    setData((prev) => ({
+      ...prev,
+      expenses: prev.expenses.filter((e) => e.id !== id),
+    }));
+  };
+
+  // ✏ start editing
+  const handleEditExpense = (expense) => {
+    setEditingExpenseId(expense.id);
+    setExpenseForm({
+      title: expense.title,
+      amount: String(expense.amount),
+      date: expense.date,
+      category: expense.category || "Other",
     });
   };
 
@@ -493,9 +543,10 @@ export default function App() {
             <hr />
 
             <h3>Expense Details</h3>
-            ${expenses.length === 0
-        ? "<p>No expenses for this selection.</p>"
-        : `
+            ${
+              expenses.length === 0
+                ? "<p>No expenses for this selection.</p>"
+                : `
             <table>
               <thead>
                 <tr>
@@ -507,8 +558,8 @@ export default function App() {
               </thead>
               <tbody>
                 ${expenses
-          .map(
-            (e) => `
+                  .map(
+                    (e) => `
                   <tr>
                     <td>${e.date}</td>
                     <td>${e.title}</td>
@@ -516,8 +567,8 @@ export default function App() {
                     <td class="right">₹${e.amount}</td>
                   </tr>
                 `
-          )
-          .join("")}
+                  )
+                  .join("")}
               </tbody>
               <tfoot>
                 <tr>
@@ -527,7 +578,7 @@ export default function App() {
               </tfoot>
             </table>
             `
-      }
+            }
 
             <div class="footer">
               Generated from <strong>Expenso</strong>
@@ -553,8 +604,8 @@ export default function App() {
         <p>Simple • Fast • Personal</p>
       </header>
 
-
       <main className="app-main">
+        {/* CURRENT MONTH CARD */}
         <section className="card">
           <h2>Current Month ({currentMonthKey})</h2>
           <div className="stats-grid">
@@ -660,14 +711,35 @@ export default function App() {
                     <span className="expense-date">{e.date}</span>
                   </div>
                 </div>
-                <div className="expense-amount">₹{e.amount}</div>
+                <div className="expense-right">
+                  <div className="expense-amount">₹{e.amount}</div>
+                  <div className="expense-actions">
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => handleEditExpense(e)}
+                      title="Edit"
+                    >
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => handleDeleteExpense(e.id)}
+                      title="Delete"
+                    >
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
         </section>
 
+        {/* ADD / EDIT EXPENSE CARD */}
         <section className="card">
-          <h2>Add Expense</h2>
+          <h2>{editingExpenseId ? "Edit Expense" : "Add Expense"}</h2>
           <form className="form" onSubmit={handleAddExpense}>
             <label>
               What did you buy?
@@ -718,11 +790,30 @@ export default function App() {
               </div>
             </label>
             <button className="btn-main" type="submit">
-              Add
+              {editingExpenseId ? "Update" : "Add"}
             </button>
+
+            {editingExpenseId && (
+              <button
+                type="button"
+                className="btn-secondary btn-main"
+                onClick={() => {
+                  setEditingExpenseId(null);
+                  setExpenseForm({
+                    title: "",
+                    amount: "",
+                    date: getTodayDateStr(),
+                    category: "Other",
+                  });
+                }}
+              >
+                Cancel edit
+              </button>
+            )}
           </form>
         </section>
 
+        {/* PREVIOUS MONTH CARD */}
         <section className="card">
           <div className="card-header-row">
             <h2>Previous Month ({prevMonthKey})</h2>
@@ -746,6 +837,7 @@ export default function App() {
           </div>
         </section>
 
+        {/* MONTH DETAILS CARD */}
         <section className="card">
           <h2>Month Details</h2>
           <div className="month-selector">
@@ -788,8 +880,8 @@ export default function App() {
                 {categoryFilter.includes("All") || categoryFilter.length === 0
                   ? "Total Expense"
                   : categoryFilter.length === 1
-                    ? `Total (${categoryFilter[0]})`
-                    : `Total (${categoryFilter.length} categories)`}
+                  ? `Total (${categoryFilter[0]})`
+                  : `Total (${categoryFilter.length} categories)`}
               </span>
               <span className="stat-value">₹{filteredMonthTotal}</span>
             </div>
@@ -821,7 +913,27 @@ export default function App() {
                     <span className="expense-date">{e.date}</span>
                   </div>
                 </div>
-                <div className="expense-amount">₹{e.amount}</div>
+                <div className="expense-right">
+                  <div className="expense-amount">₹{e.amount}</div>
+                  <div className="expense-actions">
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => handleEditExpense(e)}
+                      title="Edit"
+                    >
+                      <i class="fa-solid fa-pen-to-square"></i>
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => handleDeleteExpense(e.id)}
+                      title="Delete"
+                    >
+                      <i class="fa-solid fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
