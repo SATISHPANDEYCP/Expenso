@@ -25,6 +25,8 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  z-index: 1;
 }
 
 .app-header {
@@ -330,6 +332,12 @@ button:disabled:hover {
   pointer-events: none;
 }
 
+.page {
+  position: relative;
+  z-index: 1;
+}
+
+
 .multi-select {
   position: relative;
   width: 100%;
@@ -532,7 +540,6 @@ button:disabled:hover {
   font-size: 0.95rem;
 }
 
-/* 🆕 right side (amount + icons) */
 .expense-right {
   display: flex;
   flex-direction: column;
@@ -545,8 +552,6 @@ button:disabled:hover {
   gap: 4px;
 }
 
-/* 🆕 icon-only buttons (no bg, no pill) */
-/* icon-only button */
 .icon-btn {
   padding: 0;
   margin-top: 0;
@@ -560,7 +565,6 @@ button:disabled:hover {
   height: auto;
 }
 
-/* hover */
 .icon-btn:hover {
   color: #e5e7eb;
   background: transparent;
@@ -569,7 +573,6 @@ button:disabled:hover {
   box-shadow: none;
 }
 
-/* 🧨 active + focus states ko bhi reset kar do */
 .icon-btn:active,
 .icon-btn:focus,
 .icon-btn:focus-visible {
@@ -580,7 +583,6 @@ button:disabled:hover {
   outline: none;
 }
 
-/* font awesome icon ka size */
 .icon-btn i {
   font-size: 0.8rem;
   pointer-events: none;
@@ -632,25 +634,21 @@ button:disabled:hover {
   padding: 30px 8px;
 }
 
-/* 🔹 Recharts elements pe click-outline hatao */
 .recharts-wrapper:focus,
 .recharts-surface:focus,
 .recharts-legend-item:focus {
   outline: none;
 }
 
-/* agar kahin border aa raha ho to safe side: */
 .recharts-legend-item {
   border: none;
 }
 
-/* extra safety – koi bhi clickable svg item */
 .recharts-sector:focus,
 .recharts-dot:focus {
   outline: none;
 }
 
-/* Recharts legend – make it responsive & center */
 .recharts-default-legend {
   display: flex;
   flex-wrap: wrap;
@@ -667,12 +665,63 @@ button:disabled:hover {
   display: none !important;
 }
 
+.unselected-text {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 120px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  color: rgba(255, 255, 255, 0.03);
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  z-index: 0;
+  text-transform: uppercase;
+}
+
+.footer-brand-strip {
+  text-align: left;
+  position: relative;
+  z-index: 1;
+  font-size: 96px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.05);
+  background: none;
+  margin-bottom: -35px;
+  padding: 0 8px 0;
+  transform: translateY(-30px);
+  user-select: none;
+  pointer-events: none;
+  line-height: 1;
+}
+
 .app-footer {
+  position: relative;
+  z-index: 2;
+  padding: 12px 8px;
   text-align: center;
-  padding: 8px 0 14px;
   font-size: 0.75rem;
-  color: #6b7280;
-  border-top: 1px solid rgba(31, 41, 55, 0.5);
+  letter-spacing: 0.4px;
+  color: #9ca3af;
+  background: linear-gradient(to right,
+      rgba(2, 6, 23, 0.95),
+      rgba(3, 7, 30, 0.95),
+      rgba(2, 6, 23, 0.95));
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+.app-footer span {
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.app-footer span:hover {
+  opacity: 1;
 }
 
 @media (max-width: 600px) {
@@ -686,6 +735,15 @@ button:disabled:hover {
 
   .month-selector {
     flex-direction: row;
+  }
+
+  .unselected-text {
+    font-size: 70px;
+  }
+
+  .footer-brand-strip {
+    font-size: 48px;
+    letter-spacing: 4px;
   }
 }
 

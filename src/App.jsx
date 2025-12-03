@@ -39,16 +39,15 @@ const CATEGORY_LABELS = {
 };
 
 const DONUT_COLORS = [
-  "#f97316", // orange
-  "#22c55e", // green
-  "#6366f1", // indigo
-  "#eab308", // amber
-  "#ec4899", // pink
-  "#06b6d4", // cyan
-  "#a855f7", // violet
+  "#f97316",
+  "#22c55e",
+  "#6366f1",
+  "#eab308",
+  "#ec4899",
+  "#06b6d4",
+  "#a855f7",
 ];
 
-// 🔢 for percentage label on donut
 const RADIAN = Math.PI / 180;
 const renderDonutLabel = ({
   cx,
@@ -128,8 +127,8 @@ function MultiCategorySelect({ options, value, onChange }) {
   const displayText = isAll
     ? "All categories"
     : value.length === 1
-    ? displayLabel(value[0])
-    : `${value.length} categories selected`;
+      ? displayLabel(value[0])
+      : `${value.length} categories selected`;
 
   const toggleOption = (opt) => {
     let next = value;
@@ -137,14 +136,11 @@ function MultiCategorySelect({ options, value, onChange }) {
 
     if (opt === "All") {
       if (currentlyAll && value.length === 1) {
-        // All is already selected alone → clear all (but filter still treats as "All")
         next = [];
       } else {
-        // Select only All
         next = ["All"];
       }
     } else {
-      // Toggling a normal category
       let base = currentlyAll ? [] : value.filter((v) => v !== "All");
       const has = base.includes(opt);
       if (has) {
@@ -227,10 +223,8 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState(["All"]);
   const [isEditingIncome, setIsEditingIncome] = useState(false);
 
-  // which expense is being edited
   const [editingExpenseId, setEditingExpenseId] = useState(null);
 
-  // 🔽 Add/Edit form ke liye ref (scroll on edit)
   const editFormRef = useRef(null);
 
   useEffect(() => {
@@ -299,7 +293,6 @@ export default function App() {
     }));
   };
 
-  // Add OR edit expense
   const handleAddExpense = (e) => {
     e.preventDefault();
     const title = expenseForm.title.trim();
@@ -311,19 +304,18 @@ export default function App() {
     const monthKey = getMonthKey(dateStr);
 
     if (editingExpenseId) {
-      // Edit existing
       setData((prev) => ({
         ...prev,
         expenses: prev.expenses.map((exp) =>
           exp.id === editingExpenseId
             ? {
-                ...exp,
-                title,
-                amount: amountNum,
-                date: dateStr,
-                monthKey,
-                category: expenseForm.category || "Other",
-              }
+              ...exp,
+              title,
+              amount: amountNum,
+              date: dateStr,
+              monthKey,
+              category: expenseForm.category || "Other",
+            }
             : exp
         ),
       }));
@@ -344,7 +336,6 @@ export default function App() {
       }));
     }
 
-    // reset form + clear edit mode
     setExpenseForm({
       title: "",
       amount: "",
@@ -354,7 +345,6 @@ export default function App() {
     setEditingExpenseId(null);
   };
 
-  // delete single expense
   const handleDeleteExpense = (id) => {
     const ok = window.confirm("Delete this expense?");
     if (!ok) return;
@@ -365,7 +355,6 @@ export default function App() {
     }));
   };
 
-  // start editing
   const handleEditExpense = (expense) => {
     setEditingExpenseId(expense.id);
     setExpenseForm({
@@ -375,7 +364,6 @@ export default function App() {
       category: expense.category || "Other",
     });
 
-    // 🔽 Auto-scroll to Add/Edit form
     setTimeout(() => {
       if (editFormRef.current) {
         editFormRef.current.scrollIntoView({
@@ -608,9 +596,23 @@ export default function App() {
               font-size: 0.75rem;
               color: #6b7280;
             }
+            .bill-watermark {
+              position: fixed;
+              bottom: 80px;
+              left: 50%;
+              transform: translateX(-50%);
+              font-size: 88px;
+              font-weight: 900;
+              letter-spacing: 8px;
+              color: rgba(0, 0, 0, 0.05);
+              user-select: none;
+              pointer-events: none;
+              z-index: 0;
+            }
           </style>
         </head>
         <body>
+        <div class="bill-watermark">EXPENSO</div>
           <div class="page">
             <h1>Expenso – Monthly Expense Bill</h1>
             <h2>Month: ${selectedMonthKey}</h2>
@@ -638,10 +640,9 @@ export default function App() {
             <hr />
 
             <h3>Expense Details</h3>
-            ${
-              expenses.length === 0
-                ? "<p>No expenses for this selection.</p>"
-                : `
+            ${expenses.length === 0
+        ? "<p>No expenses for this selection.</p>"
+        : `
             <table>
               <thead>
                 <tr>
@@ -653,8 +654,8 @@ export default function App() {
               </thead>
               <tbody>
                 ${expenses
-                  .map(
-                    (e) => `
+          .map(
+            (e) => `
                   <tr>
                     <td>${e.date}</td>
                     <td>${e.title}</td>
@@ -662,8 +663,8 @@ export default function App() {
                     <td class="right">₹${e.amount}</td>
                   </tr>
                 `
-                  )
-                  .join("")}
+          )
+          .join("")}
               </tbody>
               <tfoot>
                 <tr>
@@ -673,7 +674,7 @@ export default function App() {
               </tfoot>
             </table>
             `
-            }
+      }
 
             <div class="footer">
               Generated from <strong>Expenso</strong>
@@ -689,7 +690,6 @@ export default function App() {
     win.print();
   };
 
-  // Donut chart data (selected month, all categories)
   const categoryDonutData = useMemo(() => {
     if (selectedMonthExpenses.length === 0) return [];
     const map = {};
@@ -704,7 +704,6 @@ export default function App() {
     }));
   }, [selectedMonthExpenses]);
 
-  // last 6 months (current month + previous 5)
   const lastSixMonthKeys = useMemo(() => {
     const result = [];
     const [year, month] = currentMonthKey.split("-").map(Number);
@@ -753,7 +752,6 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {/* CURRENT MONTH CARD */}
         <section className="card">
           <h2>Current Month ({currentMonthKey})</h2>
           <div className="stats-grid">
@@ -885,7 +883,6 @@ export default function App() {
           </ul>
         </section>
 
-        {/* ADD / EDIT EXPENSE CARD */}
         <section className="card" ref={editFormRef}>
           <h2>{editingExpenseId ? "Edit Expense" : "Add Expense"}</h2>
           <form className="form" onSubmit={handleAddExpense}>
@@ -961,7 +958,6 @@ export default function App() {
           </form>
         </section>
 
-        {/* PREVIOUS MONTH CARD */}
         <section className="card">
           <div className="card-header-row">
             <h2>Previous Month ({prevMonthKey})</h2>
@@ -985,7 +981,6 @@ export default function App() {
           </div>
         </section>
 
-        {/* MONTH DETAILS CARD */}
         <section className="card">
           <h2>Month Details</h2>
           <div className="month-selector">
@@ -1028,8 +1023,8 @@ export default function App() {
                 {categoryFilter.includes("All") || categoryFilter.length === 0
                   ? "Total Expense"
                   : categoryFilter.length === 1
-                  ? `Total (${categoryFilter[0]})`
-                  : `Total (${categoryFilter.length} categories)`}
+                    ? `Total (${categoryFilter[0]})`
+                    : `Total (${categoryFilter.length} categories)`}
               </span>
               <span className="stat-value">₹{filteredMonthTotal}</span>
             </div>
@@ -1095,11 +1090,9 @@ export default function App() {
           </button>
         </section>
 
-        {/* INSIGHTS & GRAPHS – LAST CARD */}
         <section className="card">
           <h2>Insights & Graphs</h2>
           <div className="chart-row">
-            {/* Donut chart – category breakdown */}
             <div className="chart-box">
               <div className="chart-heading">
                 Category Breakdown – {selectedMonthKey}
@@ -1161,7 +1154,6 @@ export default function App() {
               )}
             </div>
 
-            {/* Line chart – last 6 months */}
             <div className="chart-box">
               <div className="chart-heading">
                 Last 6 Months – Income vs Expense
@@ -1244,9 +1236,12 @@ export default function App() {
           </div>
         </section>
       </main>
-
+      <div className="unselected-text">
+        <p>Expenso</p>
+      </div>
+      <div className="footer-brand-strip">EXPENSO</div>
       <footer className="app-footer">
-        <span>Made for personal use 🧾 – Expenso</span>
+        <span>© Expenso - Personal Finance Tracker</span>
       </footer>
     </div>
   );
