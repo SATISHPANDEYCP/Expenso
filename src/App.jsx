@@ -105,6 +105,21 @@ function getTodayDateStr() {
   return `${y}-${m}-${day}`;
 }
 
+function formatDateTime(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+
+  return d.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function MultiCategorySelect({ options, value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -192,8 +207,7 @@ export default function App() {
     try {
       const saved = window.localStorage.getItem("expenso-theme");
       if (saved === "light" || saved === "dark") return saved;
-    } catch (e) {
-    }
+    } catch (e) { }
     return "dark";
   });
 
@@ -247,8 +261,7 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", theme);
     try {
       window.localStorage.setItem("expenso-theme", theme);
-    } catch (e) {
-    }
+    } catch (e) { }
   }, [theme]);
 
   useEffect(() => {
@@ -292,8 +305,7 @@ export default function App() {
     deferredPrompt.prompt();
     try {
       await deferredPrompt.userChoice;
-    } catch (e) {
-    }
+    } catch (e) { }
     setDeferredPrompt(null);
     setInstallAvailable(false);
   };
@@ -329,7 +341,7 @@ export default function App() {
     sevenDaysAgo.setDate(today.getDate() - 6);
 
     return currentMonthExpenses.reduce((sum, e) => {
-      const d = new Date(e.date);
+      const d = new Date(e.time || e.date);
       if (d >= sevenDaysAgo && d <= today) {
         return sum + e.amount;
       }
@@ -387,11 +399,14 @@ export default function App() {
         ),
       }));
     } else {
+      const now = new Date();
+
       const newExpense = {
-        id: Date.now().toString(),
+        id: now.getTime().toString(),
         title,
         amount: amountNum,
         date: dateStr,
+        time: now.toISOString(),
         monthKey,
         category: expenseForm.category || "Other",
       };
@@ -524,7 +539,8 @@ export default function App() {
             });
 
             mergedExpenses.sort(
-              (a, b) => new Date(b.date) - new Date(a.date)
+              (a, b) =>
+                new Date(b.time || b.date) - new Date(a.time || a.date)
             );
 
             return {
@@ -567,6 +583,22 @@ export default function App() {
 
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
+
+    const rowsHtml = expenses
+      .map((e) => {
+        const dt = e.time
+          ? formatDateTime(e.time)
+          : formatDateTime(e.date);
+        return `
+                  <tr>
+                    <td>${dt}</td>
+                    <td>${e.title}</td>
+                    <td>${e.category || "Other"}</td>
+                    <td class="right">₹${e.amount}</td>
+                  </tr>
+                `;
+      })
+      .join("");
 
     const html = `
       <html>
@@ -645,9 +677,9 @@ export default function App() {
             tbody tr:nth-child(even) {
               background: #f9fafb;
             }
-            tfoot td {
-              font-weight: 600;
-              background: #f3f4f6;
+           .total-row td {
+            font-weight: 600;
+            background: #f3f4f6;
             }
             .right {
               text-align: right;
@@ -709,36 +741,24 @@ export default function App() {
             ${expenses.length === 0
         ? "<p>No expenses for this selection.</p>"
         : `
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Title</th>
-                  <th>Category</th>
-                  <th class="right">Amount (₹)</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${expenses
-          .map(
-            (e) => `
-                  <tr>
-                    <td>${e.date}</td>
-                    <td>${e.title}</td>
-                    <td>${e.category || "Other"}</td>
-                    <td class="right">₹${e.amount}</td>
-                  </tr>
-                `
-          )
-          .join("")}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colspan="3">Total</td>
-                  <td class="right">₹${total}</td>
-                </tr>
-              </tfoot>
-            </table>
+           <table>
+             <thead>
+               <tr>
+                 <th>Date & Time</th>
+                 <th>Title</th>
+                 <th>Category</th>
+                 <th class="right">Amount (₹)</th>
+               </tr>
+             </thead>
+             <tbody>
+               ${rowsHtml}
+               <tr class="total-row">
+                 <td colspan="3">Total</td>
+                 <td class="right">₹${total}</td>
+               </tr>
+             </tbody>
+           </table>
+           
             `
       }
 
@@ -940,7 +960,9 @@ export default function App() {
                     <span className="expense-category">
                       {e.category || "Other"}
                     </span>
-                    <span className="expense-date">{e.date}</span>
+                    <span className="expense-date">
+                      {formatDateTime(e.time || e.date)}
+                    </span>
                   </div>
                 </div>
                 <div className="expense-right">
@@ -1139,7 +1161,9 @@ export default function App() {
                     <span className="expense-category">
                       {e.category || "Other"}
                     </span>
-                    <span className="expense-date">{e.date}</span>
+                    <span className="expense-date">
+                      {formatDateTime(e.time || e.date)}
+                    </span>
                   </div>
                 </div>
                 <div className="expense-right">

@@ -786,6 +786,42 @@ button:disabled:hover {
   outline: none;
 }
 
+.recharts-dot,
+.recharts-active-dot,
+.recharts-tooltip-cursor {
+  display: none !important;
+}
+
+.chart-inner svg,
+.chart-inner svg * {
+  outline: none !important;
+}
+
+.recharts-wrapper,
+.recharts-surface {
+  outline: none !important;
+}
+
+.recharts-wrapper:focus,
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus,
+.recharts-surface:focus-visible,
+.chart-inner svg:focus,
+.chart-inner svg *:focus {
+  outline: none !important;
+}
+
+.chart-inner svg rect[stroke="#ffffff"],
+.chart-inner svg rect[stroke="white"] {
+  stroke: transparent !important;
+}
+
+.recharts-dot,
+.recharts-active-dot,
+.recharts-tooltip-cursor {
+  display: none !important;
+}
+
 .recharts-legend-item {
   border: none;
 }
