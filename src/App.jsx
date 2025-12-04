@@ -341,7 +341,7 @@ export default function App() {
     sevenDaysAgo.setDate(today.getDate() - 6);
 
     return currentMonthExpenses.reduce((sum, e) => {
-      const d = new Date(e.time || e.date);
+      const d = new Date(e.date || e.time);
       if (d >= sevenDaysAgo && d <= today) {
         return sum + e.amount;
       }
@@ -961,7 +961,7 @@ export default function App() {
                       {e.category || "Other"}
                     </span>
                     <span className="expense-date">
-                      {formatDateTime(e.time || e.date)}
+                      {formatDateTime(e.date || e.time)}
                     </span>
                   </div>
                 </div>
@@ -1162,7 +1162,7 @@ export default function App() {
                       {e.category || "Other"}
                     </span>
                     <span className="expense-date">
-                      {formatDateTime(e.time || e.date)}
+                      {formatDateTime(e.date || e.time)}
                     </span>
                   </div>
                 </div>
