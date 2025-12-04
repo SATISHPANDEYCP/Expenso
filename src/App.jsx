@@ -105,12 +105,23 @@ function getTodayDateStr() {
   return `${y}-${m}-${day}`;
 }
 
-function formatDateTime(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return dateStr;
+function formatDateTime(value) {
+  if (!value) return "";
 
-  return d.toLocaleString("en-IN", {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split("-").map(Number);
+
+    return new Date(y, m - 1, d).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  }
+
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return value;
+
+  return dt.toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -383,6 +394,8 @@ export default function App() {
     const monthKey = getMonthKey(dateStr);
 
     if (editingExpenseId) {
+      const isToday = dateStr === getTodayDateStr();
+
       setData((prev) => ({
         ...prev,
         expenses: prev.expenses.map((exp) =>
@@ -394,19 +407,23 @@ export default function App() {
               date: dateStr,
               monthKey,
               category: expenseForm.category || "Other",
+              time: isToday ? (exp.time || new Date().toISOString()) : null,
             }
             : exp
         ),
       }));
-    } else {
+    }
+    else {
       const now = new Date();
+
+      const isToday = dateStr === getTodayDateStr();
 
       const newExpense = {
         id: now.getTime().toString(),
         title,
         amount: amountNum,
         date: dateStr,
-        time: now.toISOString(),
+        time: isToday ? now.toISOString() : null,
         monthKey,
         category: expenseForm.category || "Other",
       };
@@ -540,7 +557,7 @@ export default function App() {
 
             mergedExpenses.sort(
               (a, b) =>
-                new Date(b.time || b.date) - new Date(a.time || a.date)
+                new Date(b.date || b.time) - new Date(a.date || a.time)
             );
 
             return {
@@ -586,9 +603,7 @@ export default function App() {
 
     const rowsHtml = expenses
       .map((e) => {
-        const dt = e.time
-          ? formatDateTime(e.time)
-          : formatDateTime(e.date);
+        const dt = formatDateTime(e.time || e.date);
         return `
                   <tr>
                     <td>${dt}</td>
@@ -961,7 +976,7 @@ export default function App() {
                       {e.category || "Other"}
                     </span>
                     <span className="expense-date">
-                      {formatDateTime(e.date || e.time)}
+                      {formatDateTime(e.time || e.date)}
                     </span>
                   </div>
                 </div>
@@ -1162,7 +1177,7 @@ export default function App() {
                       {e.category || "Other"}
                     </span>
                     <span className="expense-date">
-                      {formatDateTime(e.date || e.time)}
+                      {formatDateTime(e.time || e.date)}
                     </span>
                   </div>
                 </div>
