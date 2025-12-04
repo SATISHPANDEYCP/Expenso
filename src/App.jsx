@@ -60,7 +60,7 @@ const renderDonutLabel = ({
 }) => {
   if (!percent || percent < 0.06) return null;
 
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.20;
+  const radius = innerRadius + (outerRadius - innerRadius) * 0.2;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
   const pct = (percent * 100).toFixed(0);
@@ -188,6 +188,18 @@ function MultiCategorySelect({ options, value, onChange }) {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = window.localStorage.getItem("expenso-theme");
+      if (saved === "light" || saved === "dark") return saved;
+    } catch (e) {
+    }
+    return "dark";
+  });
+
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [installAvailable, setInstallAvailable] = useState(false);
+
   const [data, setData] = useState(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -230,6 +242,61 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }, [data]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      window.localStorage.setItem("expenso-theme", theme);
+    } catch (e) {
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    const handleButtonHaptics = (event) => {
+      const button = event.target.closest("button");
+      if (!button || button.disabled) return;
+
+      if (window.navigator && "vibrate" in window.navigator) {
+        window.navigator.vibrate(15);
+      }
+
+      button.classList.add("btn-haptic");
+      setTimeout(() => {
+        button.classList.remove("btn-haptic");
+      }, 100);
+    };
+
+    document.addEventListener("click", handleButtonHaptics);
+    return () => document.removeEventListener("click", handleButtonHaptics);
+  }, []);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setInstallAvailable(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener(
+        "beforeinstallprompt",
+        handleBeforeInstallPrompt
+      );
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    try {
+      await deferredPrompt.userChoice;
+    } catch (e) {
+    }
+    setDeferredPrompt(null);
+    setInstallAvailable(false);
+  };
 
   const currentMonthKey = getMonthKey(getTodayDateStr());
   const prevMonthKey = getPrevMonthKey(currentMonthKey);
@@ -320,7 +387,6 @@ export default function App() {
         ),
       }));
     } else {
-      // Add new
       const newExpense = {
         id: Date.now().toString(),
         title,
@@ -744,11 +810,31 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>
-          <span className="app-header-logo">₹</span>
-          Expenso
-        </h1>
-        <p>Simple • Fast • Personal</p>
+        <div className="header-part-1">
+          <h1>
+            <span className="app-header-logo">₹</span>
+            Expenso
+          </h1>
+          <p>Simple • Fast • Personal</p>
+        </div>
+        <div className="header-part-2">
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={() =>
+              setTheme((prev) => (prev === "dark" ? "light" : "dark"))
+            }
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+          >
+            <i
+              className={`fa-solid ${theme === "dark" ? "fa-sun" : "fa-moon"
+                }`}
+            ></i>
+            <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+          </button>
+        </div>
       </header>
 
       <main className="app-main">
@@ -1242,6 +1328,15 @@ export default function App() {
       <div className="footer-brand-strip">EXPENSO</div>
       <footer className="app-footer">
         <span>© Expenso - Personal Finance Tracker</span>
+        <button
+          type="button"
+          className="install-btn"
+          onClick={handleInstallClick}
+          disabled={!installAvailable}
+        >
+          <i className="fa-solid fa-download"></i>
+          <span>{installAvailable ? "Install App" : "Install"}</span>
+        </button>
       </footer>
     </div>
   );
