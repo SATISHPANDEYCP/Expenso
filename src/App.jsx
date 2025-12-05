@@ -81,6 +81,50 @@ const renderDonutLabel = ({
   );
 };
 
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("expenso-file-handles", 1);
+    req.onupgradeneeded = (ev) => {
+      const db = ev.target.result;
+      if (!db.objectStoreNames.contains("handles")) {
+        db.createObjectStore("handles");
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function saveFileHandle(key, handle) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("handles", "readwrite");
+    tx.objectStore("handles").put(handle, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getSavedFileHandle(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("handles", "readonly");
+    const req = tx.objectStore("handles").get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function deleteSavedFileHandle(key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("handles", "readwrite");
+    tx.objectStore("handles").delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 function getMonthKey(dateStr) {
   const d = new Date(dateStr);
   const y = d.getFullYear();
@@ -157,24 +201,18 @@ function MultiCategorySelect({ options, value, onChange }) {
       : `${value.length} categories selected`;
 
   const toggleOption = (opt) => {
-    let next = value;
     const currentlyAll = value.includes("All");
+    let next;
 
     if (opt === "All") {
-      if (currentlyAll && value.length === 1) {
-        next = [];
-      } else {
-        next = ["All"];
-      }
+      next = currentlyAll && value.length === 1 ? [] : ["All"];
     } else {
-      let base = currentlyAll ? [] : value.filter((v) => v !== "All");
-      const has = base.includes(opt);
-      if (has) {
-        base = base.filter((v) => v !== opt);
+      const base = currentlyAll ? [] : value.filter((v) => v !== "All");
+      if (base.includes(opt)) {
+        next = base.filter((v) => v !== opt);
       } else {
-        base = base.concat(opt);
+        next = base.concat(opt);
       }
-      next = base;
     }
 
     onChange(next);
@@ -185,6 +223,16 @@ function MultiCategorySelect({ options, value, onChange }) {
       <div
         className="multi-select-trigger"
         onClick={() => setOpen((prev) => !prev)}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setOpen((prev) => !prev);
+          }
+        }}
+        role="button"
+        aria-haspopup="true"
+        aria-expanded={open}
       >
         <span className="multi-select-value">{displayText}</span>
         <span className="multi-select-arrow">▾</span>
@@ -224,6 +272,11 @@ export default function App() {
 
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [installAvailable, setInstallAvailable] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  const [savedBackupAvailable, setSavedBackupAvailable] = useState(false);
+
+  const [restoreFilename, setRestoreFilename] = useState("No file chosen");
 
   const [data, setData] = useState(() => {
     try {
@@ -265,7 +318,11 @@ export default function App() {
   const editFormRef = useRef(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (err) {
+      console.warn("Failed to save to localStorage:", err);
+    }
   }, [data]);
 
   useEffect(() => {
@@ -407,13 +464,12 @@ export default function App() {
               date: dateStr,
               monthKey,
               category: expenseForm.category || "Other",
-              time: isToday ? (exp.time || new Date().toISOString()) : null,
+              time: isToday ? exp.time || new Date().toISOString() : null,
             }
             : exp
         ),
       }));
-    }
-    else {
+    } else {
       const now = new Date();
 
       const isToday = dateStr === getTodayDateStr();
@@ -501,28 +557,201 @@ export default function App() {
   const hasData =
     data.expenses.length > 0 || Object.keys(data.incomes).length > 0;
 
-  const handleBackupDownload = () => {
+  const BACKUP_HANDLE_KEY = "expenso-backup-handle";
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const h = await getSavedFileHandle(BACKUP_HANDLE_KEY);
+        if (!mounted) return;
+        setSavedBackupAvailable(Boolean(h));
+      } catch (e) {
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!hasData) return;
+    let cancelled = false;
+    const json = JSON.stringify(data, null, 2);
+
+    const timer = setTimeout(async () => {
+      try {
+        const fileHandle = await getSavedFileHandle(BACKUP_HANDLE_KEY);
+        if (!fileHandle) return;
+
+        if (fileHandle.queryPermission) {
+          const qp = await fileHandle.queryPermission({ mode: "readwrite" });
+          if (qp === "prompt") {
+            const rp = await fileHandle.requestPermission({ mode: "readwrite" });
+            if (rp !== "granted") throw new Error("Permission denied");
+          } else if (qp !== "granted") {
+            throw new Error("No write permission");
+          }
+        }
+
+        if (cancelled) return;
+        const writable = await fileHandle.createWritable();
+        await writable.write(json);
+        await writable.close();
+        setSavedBackupAvailable(true);
+      } catch (err) {
+      }
+    }, 1000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [data]);
+
+  const chooseBackupLocation = async () => {
+    try {
+      if (!("showSaveFilePicker" in window)) {
+        alert("Your browser doesn't support picking a persistent file location. Fallback will be used.");
+        return;
+      }
+
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, "0");
+      const d = String(now.getDate()).padStart(2, "0");
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      const suggested = `expenso-backup_${y}-${m}-${d}_${hh}-${mm}-${ss}.json`;
+
+      const handle = await window.showSaveFilePicker({
+        suggestedName: suggested,
+        types: [
+          {
+            description: "JSON backup",
+            accept: { "application/json": [".json"] },
+          },
+        ],
+      });
+
+      await saveFileHandle(BACKUP_HANDLE_KEY, handle);
+      setSavedBackupAvailable(true);
+      alert("Backup location saved. Future backups will overwrite this file.");
+    } catch (err) {
+      console.warn("chooseBackupLocation error:", err);
+      alert("Could not save chosen location.");
+    }
+  };
+
+  const forgetSavedBackupHandle = async () => {
+    try {
+      await deleteSavedFileHandle(BACKUP_HANDLE_KEY);
+      setSavedBackupAvailable(false);
+      alert("Saved backup file preference removed. You'll be prompted next time.");
+    } catch (err) {
+      console.warn(err);
+      alert("Could not remove saved preference.");
+    }
+  };
+
+  const handleBackupDownload = async () => {
+    if (!hasData) {
+      alert("No data to backup.");
+      return;
+    }
 
     const json = JSON.stringify(data, null, 2);
+
+    const fallbackDownload = (blob) => {
+      try {
+        const url = URL.createObjectURL(blob);
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, "0");
+        const d = String(now.getDate()).padStart(2, "0");
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mm = String(now.getMinutes()).padStart(2, "0");
+        const ss = String(now.getSeconds()).padStart(2, "0");
+        const fileName = `expenso-backup_${y}-${m}-${d}_${hh}_${mm}_${ss}.json`;
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+
+        alert("Backup downloaded (new file) ✅");
+      } catch (err) {
+        console.error("Fallback download failed:", err);
+        alert("Failed to save backup.");
+      }
+    };
+
+    try {
+      if ("showSaveFilePicker" in window) {
+        let fileHandle = null;
+        try {
+          fileHandle = await getSavedFileHandle(BACKUP_HANDLE_KEY);
+        } catch (err) {
+          console.warn("Could not read saved handle:", err);
+        }
+
+        if (!fileHandle) {
+          const now = new Date();
+          const y = now.getFullYear();
+          const m = String(now.getMonth() + 1).padStart(2, "0");
+          const d = String(now.getDate()).padStart(2, "0");
+          const hh = String(now.getHours()).padStart(2, "0");
+          const mm = String(now.getMinutes()).padStart(2, "0");
+          const ss = String(now.getSeconds()).padStart(2, "0");
+          const suggested = `expenso-backup_${y}-${m}-${d}_${hh}_${mm}_${ss}.json`;
+
+          fileHandle = await window.showSaveFilePicker({
+            suggestedName: suggested,
+            types: [
+              {
+                description: "JSON backup",
+                accept: { "application/json": [".json"] },
+              },
+            ],
+          });
+
+          try {
+            await saveFileHandle(BACKUP_HANDLE_KEY, fileHandle);
+            setSavedBackupAvailable(true);
+          } catch (err) {
+            console.warn("Failed to persist file handle:", err);
+          }
+        }
+
+        if (fileHandle) {
+          if (fileHandle.queryPermission) {
+            const qp = await fileHandle.queryPermission({ mode: "readwrite" });
+            if (qp === "prompt") {
+              const rp = await fileHandle.requestPermission({ mode: "readwrite" });
+              if (rp !== "granted") throw new Error("Permission denied to write file.");
+            } else if (qp !== "granted") {
+              throw new Error("Permission denied to write file.");
+            }
+          }
+
+          const writable = await fileHandle.createWritable();
+          await writable.write(json);
+          await writable.close();
+
+          alert("Backup saved — same file overwritten ✅");
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn("FS Access overwrite failed or not supported, falling back:", err);
+    }
+
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    const ss = String(now.getSeconds()).padStart(2, "0");
-
-    const fileName = `expenso-backup_${y}-${m}-${d}_${hh}-${mm}-${ss}.json`;
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = fileName;
-    a.click();
-    URL.revokeObjectURL(url);
+    fallbackDownload(blob);
   };
 
   const handleBackupRestore = (event) => {
@@ -578,6 +807,16 @@ export default function App() {
     reader.readAsText(file);
   };
 
+  const onRestoreChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setRestoreFilename(file.name);
+    } else {
+      setRestoreFilename("No file chosen");
+    }
+    handleBackupRestore(event);
+  };
+
   const handleDownloadBill = () => {
     const isAll =
       categoryFilter.includes("All") || categoryFilter.length === 0;
@@ -600,6 +839,10 @@ export default function App() {
 
     const win = window.open("", "_blank", "width=900,height=700");
     if (!win) return;
+    try {
+      win.opener = null;
+    } catch (e) {
+    }
 
     const rowsHtml = expenses
       .map((e) => {
@@ -773,7 +1016,7 @@ export default function App() {
                </tr>
              </tbody>
            </table>
-           
+
             `
       }
 
@@ -864,8 +1107,7 @@ export default function App() {
             }
           >
             <i
-              className={`fa-solid ${theme === "dark" ? "fa-sun" : "fa-moon"
-                }`}
+              className={`fa-solid ${theme === "dark" ? "fa-sun" : "fa-moon"}`}
             ></i>
             <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
           </button>
@@ -873,8 +1115,80 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        <section className="card">
+        <section className="card" style={{ position: "relative" }}>
           <h2>Current Month ({currentMonthKey})</h2>
+
+          <div className="card-settings-anchor">
+            <button
+              type="button"
+              className={`settings-btn ${showSettings ? "settings-open" : ""}`}
+              onClick={() => setShowSettings((s) => !s)}
+              title="Settings"
+              aria-expanded={showSettings}
+              aria-pressed={showSettings}
+            >
+              <i className="fa-solid fa-gear" aria-hidden="true"></i>
+            </button>
+
+            {showSettings && (
+              <div
+                className="settings-panel"
+                onMouseLeave={() => setShowSettings(false)}
+                role="dialog"
+                aria-label="Settings panel"
+              >
+                <div className="settings-instruction">
+                  Tip: Use these actions to save or restore your data. Choose a backup location to enable automatic overwrites.
+                </div>
+
+                <button
+                  className="menu-item"
+                  onClick={handleBackupDownload}
+                  disabled={!hasData}
+                  title={hasData ? "Save backup (overwrite saved file)" : "No data to backup"}
+                >
+                  <i className="fa-solid fa-floppy-disk"></i>
+                  <span>Download Backup (JSON)</span>
+                </button>
+
+                <button className="menu-item" onClick={chooseBackupLocation}>
+                  <i className="fa-solid fa-folder-plus"></i>
+                  <span>Choose backup location</span>
+                </button>
+
+                <button className="menu-item" onClick={forgetSavedBackupHandle}>
+                  <i className="fa-solid fa-trash-can"></i>
+                  <span>Forget saved preference</span>
+                </button>
+
+                <label
+                  className={`menu-item file-input-label ${!hasData ? "disabled" : ""}`}
+                  aria-disabled={!hasData}
+                >
+                  <i className="fa-solid fa-file-import"></i>
+                  <span>Restore Backup (JSON)</span>
+
+                  <span className="file-input-filename" title={restoreFilename}>
+                    {restoreFilename}
+                  </span>
+
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={onRestoreChange}
+                  />
+                </label>
+
+                <div className="panel-hint">
+                  Files & actions are stacked for compact access
+                </div>
+                <div className="panel-status">
+                  {savedBackupAvailable ? "✅ Backup file location saved" : "ℹ️ No saved backup location"}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="stats-grid">
             <div className="stat">
               <span className="stat-label">Income</span>
@@ -941,26 +1255,6 @@ export default function App() {
               </button>
             </div>
           )}
-
-          <div className="backup-row">
-            <button
-              type="button"
-              className="btn-main"
-              onClick={handleBackupDownload}
-              disabled={!hasData}
-            >
-              Download Backup (JSON)
-            </button>
-
-            <label className="backup-restore-label">
-              <span>Restore Backup (JSON):</span>
-              <input
-                type="file"
-                accept=".json,application/json"
-                onChange={handleBackupRestore}
-              />
-            </label>
-          </div>
 
           <h3 className="section-subtitle">Current Month Expenses</h3>
           <ul className="expense-list">
