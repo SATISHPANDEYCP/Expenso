@@ -316,6 +316,21 @@ export default function App() {
   const [editingExpenseId, setEditingExpenseId] = useState(null);
 
   const editFormRef = useRef(null);
+  const monthDetailsRef = useRef(null);
+  function scrollToElement(el, extraOffset = 12) {
+    if (!el) return;
+    const header = document.querySelector(".app-header");
+    const headerHeight = header ? header.offsetHeight : 0;
+
+    const rect = el.getBoundingClientRect();
+    const top = window.pageYOffset + rect.top - headerHeight - extraOffset;
+
+    window.scrollTo({
+      top: Math.max(0, Math.round(top)),
+      behavior: "smooth",
+    });
+  }
+
 
   useEffect(() => {
     try {
@@ -518,14 +533,12 @@ export default function App() {
       category: expense.category || "Other",
     });
 
-    setTimeout(() => {
-      if (editFormRef.current) {
-        editFormRef.current.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }
-    }, 100);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        scrollToElement(editFormRef.current, 12);
+      }, 40);
+    });
+
   };
 
   const selectedMonthExpenses = useMemo(
@@ -691,15 +704,53 @@ export default function App() {
     };
 
     try {
+      // If FS Access API is supported, try to update saved file handle if available.
       if ("showSaveFilePicker" in window) {
         let fileHandle = null;
         try {
           fileHandle = await getSavedFileHandle(BACKUP_HANDLE_KEY);
         } catch (err) {
           console.warn("Could not read saved handle:", err);
+          fileHandle = null;
         }
 
-        if (!fileHandle) {
+        // If we already have a saved handle, attempt to write to it (user-initiated, so requestPermission is allowed).
+        if (fileHandle) {
+          try {
+            if (fileHandle.queryPermission) {
+              const qp = await fileHandle.queryPermission({ mode: "readwrite" });
+              if (qp === "prompt") {
+                const rp = await fileHandle.requestPermission({ mode: "readwrite" });
+                if (rp !== "granted") throw new Error("Permission denied to write file.");
+              } else if (qp !== "granted") {
+                // attempt one more time via explicit request (user clicked)
+                const rp = await fileHandle.requestPermission({ mode: "readwrite" });
+                if (rp !== "granted") throw new Error("Permission denied to write file.");
+              }
+            }
+
+            const writable = await fileHandle.createWritable();
+            await writable.write(json);
+            await writable.close();
+
+            // IMPORTANT: save preference again to ensure it's persisted (idempotent)
+            try {
+              await saveFileHandle(BACKUP_HANDLE_KEY, fileHandle);
+              setSavedBackupAvailable(true);
+            } catch (e) {
+              console.warn("Could not re-save the handle after write:", e);
+            }
+
+            alert("Backup saved — same file overwritten ✅");
+            return;
+          } catch (err) {
+            console.warn("Writing to saved handle failed, will prompt to pick a location:", err);
+            // fall through to showSaveFilePicker so user can pick new location
+          }
+        }
+
+        // No saved handle or writing to it failed: ask user to choose a file location and save that preference.
+        try {
           const now = new Date();
           const y = now.getFullYear();
           const m = String(now.getMonth() + 1).padStart(2, "0");
@@ -707,9 +758,9 @@ export default function App() {
           const hh = String(now.getHours()).padStart(2, "0");
           const mm = String(now.getMinutes()).padStart(2, "0");
           const ss = String(now.getSeconds()).padStart(2, "0");
-          const suggested = `expenso-backup_${y}-${m}-${d}_${hh}_${mm}_${ss}.json`;
+          const suggested = `expenso-backup_${y}-${m}-${d}_${hh}-${mm}_${ss}.json`;
 
-          fileHandle = await window.showSaveFilePicker({
+          const newHandle = await window.showSaveFilePicker({
             suggestedName: suggested,
             types: [
               {
@@ -719,37 +770,42 @@ export default function App() {
             ],
           });
 
+          // Save the user's preference immediately
           try {
-            await saveFileHandle(BACKUP_HANDLE_KEY, fileHandle);
+            await saveFileHandle(BACKUP_HANDLE_KEY, newHandle);
             setSavedBackupAvailable(true);
-          } catch (err) {
-            console.warn("Failed to persist file handle:", err);
+          } catch (e) {
+            console.warn("Failed to persist file handle:", e);
           }
-        }
 
-        if (fileHandle) {
-          if (fileHandle.queryPermission) {
-            const qp = await fileHandle.queryPermission({ mode: "readwrite" });
+          // Request permission and write
+          if (newHandle.queryPermission) {
+            const qp = await newHandle.queryPermission({ mode: "readwrite" });
             if (qp === "prompt") {
-              const rp = await fileHandle.requestPermission({ mode: "readwrite" });
+              const rp = await newHandle.requestPermission({ mode: "readwrite" });
               if (rp !== "granted") throw new Error("Permission denied to write file.");
             } else if (qp !== "granted") {
-              throw new Error("Permission denied to write file.");
+              const rp = await newHandle.requestPermission({ mode: "readwrite" });
+              if (rp !== "granted") throw new Error("Permission denied to write file.");
             }
           }
 
-          const writable = await fileHandle.createWritable();
+          const writable = await newHandle.createWritable();
           await writable.write(json);
           await writable.close();
 
-          alert("Backup saved — same file overwritten ✅");
+          alert("Backup saved (new saved location) ✅");
           return;
+        } catch (err) {
+          console.warn("User cancelled save picker or write failed:", err);
+          // If user cancelled the save picker, fall back to direct download
         }
       }
     } catch (err) {
       console.warn("FS Access overwrite failed or not supported, falling back:", err);
     }
 
+    // Fallback: download a fresh file (no preference saved)
     const blob = new Blob([json], { type: "application/json" });
     fallbackDownload(blob);
   };
@@ -1145,10 +1201,18 @@ export default function App() {
                   className="menu-item"
                   onClick={handleBackupDownload}
                   disabled={!hasData}
-                  title={hasData ? "Save backup (overwrite saved file)" : "No data to backup"}
+                  title={
+                    !hasData
+                      ? "No data to backup"
+                      : savedBackupAvailable
+                        ? "Update saved backup file with current data"
+                        : "Download backup (save as new file)"
+                  }
                 >
                   <i className="fa-solid fa-floppy-disk"></i>
-                  <span>Download Backup (JSON)</span>
+                  <span>
+                    {savedBackupAvailable ? "Update Backup (overwrite Old)" : "Download Backup (JSON)"}
+                  </span>
                 </button>
 
                 <button className="menu-item" onClick={chooseBackupLocation}>
@@ -1183,8 +1247,11 @@ export default function App() {
                   Files & actions are stacked for compact access
                 </div>
                 <div className="panel-status">
-                  {savedBackupAvailable ? "✅ Backup file location saved" : "ℹ️ No saved backup location"}
+                  {savedBackupAvailable
+                    ? "✅ Backup file location saved"
+                    : "ℹ️ No saved backup location — use 'Choose backup location' or click 'Download Backup' to save a preferred file."}
                 </div>
+
               </div>
             )}
           </div>
@@ -1381,7 +1448,14 @@ export default function App() {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => setSelectedMonthKey(prevMonthKey)}
+              onClick={() => {
+                setSelectedMonthKey(prevMonthKey);
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    scrollToElement(monthDetailsRef.current, 12);
+                  }, 40);
+                });
+              }}
             >
               Show full details
             </button>
@@ -1398,7 +1472,7 @@ export default function App() {
           </div>
         </section>
 
-        <section className="card">
+        <section className="card" ref={monthDetailsRef}>
           <h2>Month Details</h2>
           <div className="month-selector">
             <div className="month-field">
