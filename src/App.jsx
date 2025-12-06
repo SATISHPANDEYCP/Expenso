@@ -419,17 +419,20 @@ export default function App() {
   );
 
   const weeklyTotal = useMemo(() => {
-    const today = new Date(getTodayDateStr());
-    const sevenDaysAgo = new Date(getTodayDateStr());
-    sevenDaysAgo.setDate(today.getDate() - 6);
+    const now = new Date();
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const sevenDaysAgo = new Date(todayStart);
+    sevenDaysAgo.setDate(todayStart.getDate() - 6);
 
     return currentMonthExpenses.reduce((sum, e) => {
-      const d = new Date(e.date || e.time);
-      if (d >= sevenDaysAgo && d <= today) {
+      const d = new Date(e.time || e.date); // prefer time if present
+      if (d >= sevenDaysAgo && d <= now) {
         return sum + e.amount;
       }
       return sum;
     }, 0);
+
   }, [currentMonthExpenses]);
 
   const weeklyLimit = currentMonthIncome / 4;
@@ -451,7 +454,14 @@ export default function App() {
     const { name, value } = e.target;
     setExpenseForm((prev) => ({
       ...prev,
-      [name]: name === "amount" ? value.replace(/[^\d.]/g, "") : value,
+      [name]: name === "amount"
+        ? (() => {
+          const cleaned = value.replace(/[^0-9.]/g, "").replace(/\.(?=.*\.)/g, "");
+          const parts = cleaned.split(".");
+          if (parts.length === 1) return parts[0];
+          return parts[0] + "." + parts[1].slice(0, 2);
+        })()
+        : value,
     }));
   };
 
@@ -587,41 +597,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hasData) return;
-    let cancelled = false;
-    const json = JSON.stringify(data, null, 2);
-
-    const timer = setTimeout(async () => {
-      try {
-        const fileHandle = await getSavedFileHandle(BACKUP_HANDLE_KEY);
-        if (!fileHandle) return;
-
-        if (fileHandle.queryPermission) {
-          const qp = await fileHandle.queryPermission({ mode: "readwrite" });
-          if (qp === "prompt") {
-            const rp = await fileHandle.requestPermission({ mode: "readwrite" });
-            if (rp !== "granted") throw new Error("Permission denied");
-          } else if (qp !== "granted") {
-            throw new Error("No write permission");
-          }
-        }
-
-        if (cancelled) return;
-        const writable = await fileHandle.createWritable();
-        await writable.write(json);
-        await writable.close();
-        setSavedBackupAvailable(true);
-      } catch (err) {
-      }
-    }, 1000);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [data]);
-
   const chooseBackupLocation = async () => {
     try {
       if (!("showSaveFilePicker" in window)) {
@@ -704,7 +679,6 @@ export default function App() {
     };
 
     try {
-      // If FS Access API is supported, try to update saved file handle if available.
       if ("showSaveFilePicker" in window) {
         let fileHandle = null;
         try {
@@ -713,8 +687,6 @@ export default function App() {
           console.warn("Could not read saved handle:", err);
           fileHandle = null;
         }
-
-        // If we already have a saved handle, attempt to write to it (user-initiated, so requestPermission is allowed).
         if (fileHandle) {
           try {
             if (fileHandle.queryPermission) {
@@ -723,7 +695,6 @@ export default function App() {
                 const rp = await fileHandle.requestPermission({ mode: "readwrite" });
                 if (rp !== "granted") throw new Error("Permission denied to write file.");
               } else if (qp !== "granted") {
-                // attempt one more time via explicit request (user clicked)
                 const rp = await fileHandle.requestPermission({ mode: "readwrite" });
                 if (rp !== "granted") throw new Error("Permission denied to write file.");
               }
@@ -733,7 +704,6 @@ export default function App() {
             await writable.write(json);
             await writable.close();
 
-            // IMPORTANT: save preference again to ensure it's persisted (idempotent)
             try {
               await saveFileHandle(BACKUP_HANDLE_KEY, fileHandle);
               setSavedBackupAvailable(true);
@@ -745,11 +715,9 @@ export default function App() {
             return;
           } catch (err) {
             console.warn("Writing to saved handle failed, will prompt to pick a location:", err);
-            // fall through to showSaveFilePicker so user can pick new location
           }
         }
 
-        // No saved handle or writing to it failed: ask user to choose a file location and save that preference.
         try {
           const now = new Date();
           const y = now.getFullYear();
@@ -770,7 +738,6 @@ export default function App() {
             ],
           });
 
-          // Save the user's preference immediately
           try {
             await saveFileHandle(BACKUP_HANDLE_KEY, newHandle);
             setSavedBackupAvailable(true);
@@ -778,7 +745,6 @@ export default function App() {
             console.warn("Failed to persist file handle:", e);
           }
 
-          // Request permission and write
           if (newHandle.queryPermission) {
             const qp = await newHandle.queryPermission({ mode: "readwrite" });
             if (qp === "prompt") {
@@ -798,14 +764,12 @@ export default function App() {
           return;
         } catch (err) {
           console.warn("User cancelled save picker or write failed:", err);
-          // If user cancelled the save picker, fall back to direct download
         }
       }
     } catch (err) {
       console.warn("FS Access overwrite failed or not supported, falling back:", err);
     }
 
-    // Fallback: download a fresh file (no preference saved)
     const blob = new Blob([json], { type: "application/json" });
     fallbackDownload(blob);
   };
